@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ИВГУ Лабиринт — Панель организатора</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
     <style>
         * { box-sizing: border-box; }
         body {
@@ -125,7 +130,6 @@
         .rank-3 { background: linear-gradient(90deg, #cd7f32, #b8692a); }
         .waiting { animation: pulse 1.5s infinite; color: #ffaa44; text-align: center; padding: 40px; font-size: 1.2rem; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-        .refresh-btn { background: #2196f3; }
         .online-badge {
             background: #4caf50;
             border-radius: 20px;
@@ -139,6 +143,15 @@
             color: rgba(255,255,255,0.5);
             font-size: 0.8rem;
         }
+        .connection-status {
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 5px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        .connected { background: rgba(76,175,80,0.3); color: #4caf50; }
+        .disconnected { background: rgba(244,67,54,0.3); color: #f44336; }
     </style>
 </head>
 <body>
@@ -148,15 +161,15 @@
     <div class="qr-section">
         <h3>📱 Сканируйте QR-код для игры</h3>
         <div class="qr-code" id="qrCode">
-            <!-- Здесь будет ваш QR-код из файла qr.jpg -->
             <img src="qr.jpg" alt="QR-код для входа в игру" style="width:180px; height:180px;" onerror="this.onerror=null; this.src='https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://marikalin19.github.io/game/';">
         </div>
         <div class="game-link" id="gameLink">
             🔗 https://marikalin19.github.io/game/
         </div>
         <button id="copyLinkBtn">📋 Копировать ссылку</button>
-        <button id="refreshBtn" class="refresh-btn">🔄 Обновить данные</button>
     </div>
+    
+    <div id="connectionStatus" class="connection-status">🔄 Подключение к Firebase...</div>
     
     <h2>👥 ИГРОКИ ОНЛАЙН <span id="playersCount" class="online-badge">0</span></h2>
     <div class="players-grid" id="playersGrid">
@@ -164,40 +177,60 @@
     </div>
     
     <div class="leaderboard-panel">
-        <h2>📊 ТАБЛИЦА ЛИДЕРОВ</h2>
+        <h2>📊 ТАБЛИЦА ЛИДЕРОВ (ФИНИШ)</h2>
         <ul class="leaderboard-list" id="leaderboardList">
-            <li>Нет данных</li>
+            <li>Нет финишировавших</li>
         </ul>
     </div>
     <div class="footer-note">
-        🖥️ Панель организатора обновляется автоматически раз в секунду
+        🖥️ Данные обновляются автоматически в реальном времени
     </div>
 </div>
 
 <script>
-    // ========== КОНФИГУРАЦИЯ ==========
-    const ROOM_ID = "ivgu_maze_2025";
-    const GAME_URL = "https://marikalin19.github.io/game/";
-    let currentState = { players: {}, finishOrder: [] };
+    // ========== 🔥 FIREBASE КОНФИГУРАЦИЯ ==========
+    const firebaseConfig = {
+        apiKey: "AIzaSyBiyUPr5amhTM8mZQ7S7Jvfvvf3KBqaTz8",
+        authDomain: "game-f045d.firebaseapp.com",
+        databaseURL: "https://game-f045d-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "game-f045d",
+        storageBucket: "game-f045d.firebasestorage.app",
+        messagingSenderId: "159790344496",
+        appId: "1:159790344496:web:307d3ebeae6da4596b00f5"
+    };
     
-    // Загрузка состояния из localStorage (синхронизация с игрой)
-    function loadState() {
-        const saved = localStorage.getItem(`maze_${ROOM_ID}_state`);
-        if(saved) {
-            try {
-                currentState = JSON.parse(saved);
-            } catch(e) {
-                console.warn("Ошибка парсинга", e);
-            }
-        }
-        renderDashboard();
+    // Инициализация Firebase
+    let db, playersRef, finishOrderRef;
+    let firebaseReady = false;
+    
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        firebaseReady = true;
+        console.log("✅ Firebase подключен");
+        document.getElementById('connectionStatus').innerHTML = '✅ Подключено к Firebase';
+        document.getElementById('connectionStatus').className = 'connection-status connected';
+    } catch(e) {
+        console.error("❌ Ошибка Firebase:", e);
+        document.getElementById('connectionStatus').innerHTML = '❌ Ошибка подключения к Firebase';
+        document.getElementById('connectionStatus').className = 'connection-status disconnected';
     }
     
-    function renderDashboard() {
-        const players = currentState.players || {};
-        const finishOrder = currentState.finishOrder || [];
+    const ROOM_ID = "ivgu_maze_2025";
+    const GAME_URL = "https://marikalin19.github.io/game/";
+    
+    function escapeHtml(str) { 
+        if(!str) return '';
+        return String(str).replace(/[&<>]/g, function(m) { 
+            if(m === '&') return '&amp;'; 
+            if(m === '<') return '&lt;'; 
+            if(m === '>') return '&gt;'; 
+            return m; 
+        }); 
+    }
+    
+    function renderPlayers(players) {
         const playersGrid = document.getElementById('playersGrid');
-        const leaderboardList = document.getElementById('leaderboardList');
         const playersCountSpan = document.getElementById('playersCount');
         
         const playersArray = Object.values(players);
@@ -225,31 +258,58 @@
                 </div>
             `).join('');
         }
+    }
+    
+    function renderLeaderboard(finishOrder) {
+        const leaderboardList = document.getElementById('leaderboardList');
         
-        // Рейтинг по очкам
-        const sortedByScore = [...playersArray].sort((a,b) => (b.score || 0) - (a.score || 0));
-        if(sortedByScore.length === 0) {
-            leaderboardList.innerHTML = '<li>Нет данных</li>';
+        if(!finishOrder || finishOrder.length === 0) {
+            leaderboardList.innerHTML = '<li>Нет финишировавших</li>';
         } else {
-            leaderboardList.innerHTML = sortedByScore.slice(0,10).map((p, idx) => `
-                <li class="${idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : ''}">
-                    <span style="font-size:1.3rem;">${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx+1}.`}</span>
+            const sorted = [...finishOrder].sort((a,b) => a.position - b.position);
+            leaderboardList.innerHTML = sorted.map(p => `
+                <li class="${p.position === 1 ? 'rank-1' : p.position === 2 ? 'rank-2' : p.position === 3 ? 'rank-3' : ''}">
+                    <span style="font-size:1.2rem;">${p.position === 1 ? '🥇' : p.position === 2 ? '🥈' : p.position === 3 ? '🥉' : `${p.position}.`}</span>
                     <span><strong>${escapeHtml(p.name)}</strong></span>
                     <span style="flex:1; text-align:right;">⭐ ${p.score || 0}</span>
-                    <span>${p.finished ? '🏁' : '🎯'}</span>
+                    <span>⏱️ ${(p.time/1000).toFixed(1)}с</span>
                 </li>
             `).join('');
         }
     }
     
-    function escapeHtml(str) { 
-        if(!str) return '';
-        return String(str).replace(/[&<>]/g, function(m) { 
-            if(m === '&') return '&amp;'; 
-            if(m === '<') return '&lt;'; 
-            if(m === '>') return '&gt;'; 
-            return m; 
-        }); 
+    // Функция для получения рейтинга по очкам
+    function renderScoreLeaderboard(players) {
+        // Можно добавить отдельный блок, если нужно
+        const playersArray = Object.values(players);
+        const sortedByScore = [...playersArray].sort((a,b) => (b.score || 0) - (a.score || 0));
+        // Для отображения отдельного топа по очкам можно добавить, пока оставим как есть
+    }
+    
+    function initFirebaseListeners() {
+        if (!firebaseReady) return;
+        
+        playersRef = db.ref(`rooms/${ROOM_ID}/players`);
+        finishOrderRef = db.ref(`rooms/${ROOM_ID}/finishOrder`);
+        
+        // Слушаем изменения игроков
+        playersRef.on('value', (snapshot) => {
+            const players = snapshot.val() || {};
+            renderPlayers(players);
+            
+            // Также обновляем топ по очкам (можно добавить отдельный блок)
+            const playersArray = Object.values(players);
+            const sortedByScore = [...playersArray].sort((a,b) => (b.score || 0) - (a.score || 0));
+            // Можно вывести таблицу лидеров по очкам здесь, если нужно
+        });
+        
+        // Слушаем изменения порядка финиша
+        finishOrderRef.on('value', (snapshot) => {
+            const finishOrder = snapshot.val() || [];
+            renderLeaderboard(finishOrder);
+        });
+        
+        console.log("✅ Firebase слушатели настроены");
     }
     
     function init() {
@@ -263,29 +323,14 @@
             alert('✅ Ссылка скопирована!');
         });
         
-        // Кнопка обновления
-        document.getElementById('refreshBtn')?.addEventListener('click', () => {
-            loadState();
-        });
-        
-        // Загружаем состояние
-        loadState();
-        
-        // Автообновление каждую секунду
-        setInterval(() => { loadState(); }, 1000);
-        
-        // Слушаем изменения localStorage (для синхронизации с игрой)
-        window.addEventListener('storage', (e) => { 
-            if(e.key === `maze_${ROOM_ID}_state`) {
-                loadState(); 
-            }
-        });
-        
-        // Проверяем, загрузился ли QR-код из файла, если нет — используем API
+        // Проверяем QR-код
         const qrImg = document.querySelector('.qr-code img');
         if(qrImg && qrImg.complete && qrImg.naturalWidth === 0) {
             qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(GAME_URL)}`;
         }
+        
+        // Запускаем Firebase слушатели
+        initFirebaseListeners();
     }
     
     // Запуск после загрузки страницы
