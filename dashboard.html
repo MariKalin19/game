@@ -96,12 +96,7 @@
             font-size: 0.7rem;
             margin-left: 10px;
         }
-        .status-text {
-            font-size: 0.8rem;
-            color: #888;
-            text-align: center;
-            margin-top: 5px;
-        }
+        .clear-btn { background: #dc3545; }
     </style>
 </head>
 <body>
@@ -115,7 +110,8 @@
         </div>
         <div class="game-link" id="gameLink">🔗 https://marikalin19.github.io/game/</div>
         <button id="copyLinkBtn">📋 Копировать ссылку</button>
-        <button id="refreshBtn" class="refresh-btn">🔄 Обновить сейчас</button>
+        <button id="refreshBtn" class="refresh-btn">🔄 Обновить</button>
+        <button id="clearDataBtn" class="clear-btn">🗑️ Очистить старые данные</button>
     </div>
     
     <h2>👥 ИГРОКИ ОНЛАЙН <span id="playersCount" class="online-badge">0</span></h2>
@@ -128,7 +124,7 @@
         <div id="leaderboardContainer">
             <div class="empty-list">🏁 Пока нет финишировавших</div>
         </div>
-        <div class="auto-refresh" id="autoRefreshStatus">🔄 Автообновление: активно</div>
+        <div class="auto-refresh" id="autoRefreshStatus">🔄 Автообновление: активно (каждые 2 сек)</div>
     </div>
     <div class="footer-note">
         📌 Результаты сохраняются после финиша. Откройте игру на телефоне и начните прохождение.
@@ -140,31 +136,48 @@
     const STORAGE_KEY_LEADERBOARD = "maze_leaderboard";
     const STORAGE_KEY_PLAYERS = "maze_players";
     
-    function escapeHtml(str) { 
-        if(!str) return '';
-        return String(str).replace(/[&<>]/g, function(m) { 
-            if(m === '&') return '&amp;'; 
-            if(m === '<') return '&lt;'; 
-            if(m === '>') return '&gt;'; 
-            return m; 
-        }); 
-    }
-    
-    // Функция для проверки и очистки устаревших игроков (старше 30 секунд)
-    function cleanupOldPlayers(players) {
-        const now = Date.now();
-        const filtered = {};
-        for(let id in players) {
-            const player = players[id];
-            // Если игрок не финишировал и данные старее 30 секунд — удаляем
-            if(player.finished || (player.lastUpdate && now - player.lastUpdate < 30000)) {
-                filtered[id] = player;
-            } else if(!player.lastUpdate && !player.finished) {
-                // Если нет временной метки, но игрок активен — оставляем
-                filtered[id] = player;
-            }
+    // Очистка старых демо-данных
+    function clearOldData() {
+        console.log("🧹 Очистка старых данных...");
+        
+        // Очищаем игроков от демо-записей
+        const playersSaved = localStorage.getItem(STORAGE_KEY_PLAYERS);
+        if(playersSaved) {
+            try {
+                const parsed = JSON.parse(playersSaved);
+                const cleaned = {};
+                for(let id in parsed) {
+                    // Удаляем все демо-записи и тестовые
+                    if(!id.startsWith('demo_') && !id.startsWith('test_') && !parsed[id].name?.includes('Елена') && !parsed[id].name?.includes('Алексей')) {
+                        cleaned[id] = parsed[id];
+                    }
+                }
+                if(Object.keys(cleaned).length === 0) {
+                    localStorage.removeItem(STORAGE_KEY_PLAYERS);
+                } else {
+                    localStorage.setItem(STORAGE_KEY_PLAYERS, JSON.stringify(cleaned));
+                }
+            } catch(e) {}
         }
-        return filtered;
+        
+        // Очищаем рейтинг от демо-записей
+        const leaderboardSaved = localStorage.getItem(STORAGE_KEY_LEADERBOARD);
+        if(leaderboardSaved) {
+            try {
+                const parsed = JSON.parse(leaderboardSaved);
+                const cleaned = parsed.filter(p => {
+                    return !p.name?.includes('Елена') && !p.name?.includes('Алексей') && !p.id?.startsWith('demo_');
+                });
+                if(cleaned.length === 0) {
+                    localStorage.removeItem(STORAGE_KEY_LEADERBOARD);
+                } else {
+                    localStorage.setItem(STORAGE_KEY_LEADERBOARD, JSON.stringify(cleaned));
+                }
+            } catch(e) {}
+        }
+        
+        loadAndRender();
+        alert('✅ Старые демо-данные очищены!');
     }
     
     function loadAndRender() {
@@ -176,14 +189,15 @@
         if(playersSaved) {
             try {
                 const parsed = JSON.parse(playersSaved);
-                // Фильтруем демо-игроков и устаревших
+                // Фильтруем демо-игроков и старых
                 for(let id in parsed) {
-                    if(!id.startsWith('demo_') && !id.startsWith('test_')) {
-                        players[id] = parsed[id];
+                    const player = parsed[id];
+                    if(!id.startsWith('demo_') && !id.startsWith('test_') && 
+                       player.name !== 'Елена' && player.name !== 'Алексей' &&
+                       !player.name?.includes('Елена') && !player.name?.includes('Алексей')) {
+                        players[id] = player;
                     }
                 }
-                // Очищаем устаревших
-                players = cleanupOldPlayers(players);
             } catch(e) {
                 console.warn("Ошибка парсинга игроков", e);
             }
@@ -194,7 +208,11 @@
         const leaderboardSaved = localStorage.getItem(STORAGE_KEY_LEADERBOARD);
         if(leaderboardSaved) {
             try {
-                finishOrder = JSON.parse(leaderboardSaved);
+                const parsed = JSON.parse(leaderboardSaved);
+                finishOrder = parsed.filter(p => {
+                    return p.name !== 'Елена' && p.name !== 'Алексей' && 
+                           !p.name?.includes('Елена') && !p.name?.includes('Алексей');
+                });
             } catch(e) {
                 console.warn("Ошибка парсинга рейтинга", e);
             }
@@ -265,18 +283,26 @@
         `;
     }
     
-    // Принудительное обновление с очисткой кэша
+    function escapeHtml(str) { 
+        if(!str) return '';
+        return String(str).replace(/[&<>]/g, function(m) { 
+            if(m === '&') return '&amp;'; 
+            if(m === '<') return '&lt;'; 
+            if(m === '>') return '&gt;'; 
+            return m; 
+        }); 
+    }
+    
     function forceRefresh() {
         console.log("🔄 Принудительное обновление...");
         loadAndRender();
         const statusDiv = document.getElementById('autoRefreshStatus');
         statusDiv.innerHTML = '✅ Обновлено!';
         setTimeout(() => {
-            statusDiv.innerHTML = '🔄 Автообновление: активно';
+            statusDiv.innerHTML = '🔄 Автообновление: активно (каждые 2 сек)';
         }, 1500);
     }
     
-    // Инициализация
     function init() {
         // Устанавливаем ссылку
         document.getElementById('gameLink').innerHTML = `🔗 ${GAME_URL}`;
@@ -290,15 +316,18 @@
         // Кнопка обновления
         document.getElementById('refreshBtn')?.addEventListener('click', forceRefresh);
         
-        // Первая загрузка
-        loadAndRender();
+        // Кнопка очистки старых данных
+        document.getElementById('clearDataBtn')?.addEventListener('click', clearOldData);
+        
+        // Первая загрузка с очисткой
+        clearOldData();
         
         // Автообновление каждые 2 секунды
         setInterval(() => {
             loadAndRender();
         }, 2000);
         
-        // Слушаем изменения localStorage (для синхронизации между вкладками)
+        // Слушаем изменения localStorage
         window.addEventListener('storage', (e) => {
             if(e.key === STORAGE_KEY_LEADERBOARD || e.key === STORAGE_KEY_PLAYERS) {
                 console.log("📡 Обнаружено изменение в другой вкладке:", e.key);
@@ -314,7 +343,6 @@
             };
         }
         
-        // Добавляем тестовую кнопку для отладки (можно удалить позже)
         console.log("🎮 Дашборд запущен. Ожидание данных от игры...");
     }
     
