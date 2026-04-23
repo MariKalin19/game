@@ -50,7 +50,6 @@
             cursor: pointer;
         }
 
-        /* Сенсорные кнопки */
         .touch-controls {
             display: flex;
             justify-content: center;
@@ -136,16 +135,21 @@
             flex-wrap: wrap;
         }
         .avatar-option {
-            width: 70px;
-            height: 70px;
+            width: 75px;
+            height: 75px;
             border-radius: 50%;
             cursor: pointer;
             border: 3px solid white;
             transition: 0.2s;
             overflow: hidden;
             background: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
-        .avatar-option img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar-option img { width: 45px; height: 45px; object-fit: cover; border-radius: 50%; }
+        .avatar-option span { font-size: 1.3rem; margin-top: 2px; }
         .avatar-option.selected { transform: scale(1.08); border: 4px solid gold; box-shadow: 0 0 0 3px #ffd966; }
 
         .leaderboard {
@@ -242,20 +246,13 @@
             font-size: 1rem;
         }
         input { padding: 10px 20px; font-size: 1rem; border-radius: 50px; border: 2px solid #ffb347; width: 240px; text-align: center; }
-        
-        .online-status {
-            font-size: 0.7rem;
-            background: rgba(0,0,0,0.5);
-            border-radius: 20px;
-            padding: 2px 8px;
-        }
     </style>
 </head>
 <body>
 <div id="app"></div>
 
 <script>
-    // ========== 🔥 FIREBASE КОНФИГУРАЦИЯ ==========
+    // ========== FIREBASE КОНФИГУРАЦИЯ ==========
     const firebaseConfig = {
         apiKey: "AIzaSyBiyUPr5amhTM8mZQ7S7Jvfvvf3KBqaTz8",
         authDomain: "game-f045d.firebaseapp.com",
@@ -276,14 +273,15 @@
         console.log("✅ Firebase подключен");
     } catch(e) {
         console.error("❌ Ошибка Firebase:", e);
+        alert("Ошибка подключения к серверу. Игра будет работать без мультиплеера.");
     }
     
     // ========== НАСТРОЙКИ ИГРЫ ==========
-    const MAZE_SIZE = 30;  // Уменьшил до 30×30
-    const CELL_SIZE = 26;   // Чуть крупнее клетки для удобства
+    const MAZE_SIZE = 30;
+    const CELL_SIZE = 26;
     const ROOM_ID = "ivgu_maze_2025";
 
-    // Красивые иконки аватаров
+    // Красивые аватары
     const AVATAR_LIST = [
         { id: 1, name: "Маг", imageUrl: "https://cdn-icons-png.flaticon.com/512/1995/1995572.png", color: "#8B5CF6", emoji: "🧙" },
         { id: 2, name: "Воин", imageUrl: "https://cdn-icons-png.flaticon.com/512/1995/1995576.png", color: "#EF4444", emoji: "⚔️" },
@@ -293,27 +291,27 @@
         { id: 6, name: "Паладин", imageUrl: "https://cdn-icons-png.flaticon.com/512/1055/1055687.png", color: "#3B82F6", emoji: "🛡️" }
     ];
 
-    // НОВЫЕ ВОПРОСЫ
+    // Вопросы
     const questionsBank = [
         { text: "💾 Что из перечисленного является оперативной памятью?", options: ["Жесткий диск", "SSD-накопитель", "RAM", "Процессор"], correct: 2 },
         { text: "🔢 Сколько бит в одном байте?", options: ["2", "8", "16", "1024"], correct: 1 },
         { text: "💻 Какой системой счисления пользуется компьютер внутри себя?", options: ["Десятичной", "Двоичной", "Шестнадцатеричной", "Троичной"], correct: 1 },
-        { text: "📋 Что такое алгоритм?", options: ["Название программы", "Последовательность действий для решения задачи", "Ошибка в коде", "Тип процессора"], correct: 1 },
-        { text: "🌐 Что означает аббревиатура IP-адрес?", options: ["Internet Protocol Address", "Internal Program Access", "Important Computer Code", "Internet Password"], correct: 0 },
-        { text: "⚡ Для чего нужен кэш (cache) процессора?", options: ["Для хранения фильмов", "Для ускорения доступа к часто используемым данным", "Для подключения к интернету", "Для вывода изображения"], correct: 1 },
-        { text: "🧮 Что выведет этот код: x = 5; y = 3; print(x + y * 2)", options: ["16", "11", "10", "13"], correct: 1 },
-        { text: "🔄 Что такое цикл в программировании?", options: ["Тип данных для текста", "Конструкция, повторяющая блок кода", "Графический интерфейс", "Ошибка компиляции"], correct: 1 },
-        { text: "⚖️ В чем разница между = и == в большинстве языков?", options: ["Никакой", "= — присваивание, == — сравнение", "= — сравнение, == — присваивание", "Оба для вывода"], correct: 1 },
-        { text: "🗄️ Как в БД называется одна запись о человеке (Иванов, 15 лет)?", options: ["Поле", "Ячейка", "Строка (запись)", "Формула"], correct: 2 },
-        { text: "🔐 Что такое двухфакторная аутентификация (2FA)?", options: ["Два пароля", "Пароль + СМС/отпечаток", "Два логина", "Два монитора"], correct: 1 },
-        { text: "⌨️ Что делает Ctrl + Z в любом редакторе?", options: ["Сохраняет", "Копирует", "Отменяет последнее действие", "Закрывает программу"], correct: 2 }
+        { text: "📋 Что такое алгоритм?", options: ["Название программы", "Последовательность действий", "Ошибка в коде", "Тип процессора"], correct: 1 },
+        { text: "🌐 Что означает IP-адрес?", options: ["Internet Protocol Address", "Internal Program Access", "Important Computer Code", "Internet Password"], correct: 0 },
+        { text: "⚡ Для чего нужен кэш процессора?", options: ["Для хранения фильмов", "Для ускорения доступа к данным", "Для подключения к интернету", "Для вывода изображения"], correct: 1 },
+        { text: "🧮 Что выведет код: x=5; y=3; print(x+y*2)", options: ["16", "11", "10", "13"], correct: 1 },
+        { text: "🔄 Что такое цикл в программировании?", options: ["Тип данных", "Повторение блока кода", "Графический интерфейс", "Ошибка"], correct: 1 },
+        { text: "⚖️ Разница между = и ==", options: ["Нет разницы", "= присваивание, == сравнение", "= сравнение, == присваивание", "Оба для вывода"], correct: 1 },
+        { text: "🗄️ Как называется запись о человеке в БД?", options: ["Поле", "Ячейка", "Строка (запись)", "Формула"], correct: 2 },
+        { text: "🔐 Что такое двухфакторная аутентификация?", options: ["Два пароля", "Пароль + СМС/отпечаток", "Два логина", "Два монитора"], correct: 1 },
+        { text: "⌨️ Что делает Ctrl+Z?", options: ["Сохраняет", "Копирует", "Отменяет действие", "Закрывает"], correct: 2 }
     ];
     
     function getRandomQuestion() { 
         return { ...questionsBank[Math.floor(Math.random() * questionsBank.length)], id: Date.now() + Math.random() }; 
     }
 
-    // Генерация лабиринта
+    // Генерация лабиринта (без телепортов)
     function generateMaze(size) {
         let maze = Array(size).fill().map(() => Array(size).fill(1));
         function carve(x, y) {
@@ -334,9 +332,8 @@
     let baseMaze = generateMaze(MAZE_SIZE);
     baseMaze[MAZE_SIZE-2][MAZE_SIZE-2] = 4;
 
-    let teleportPairs = {};
+    // Декорирование предметами (без телепортов)
     function decorateMazeWithItems(maze) {
-        teleportPairs = {};
         let newMaze = maze.map(row => [...row]);
         let positions = [];
         for(let y = 0; y < MAZE_SIZE; y++) {
@@ -354,16 +351,7 @@
         for(let i = 75; i < 90 && i < positions.length; i++) { const [x,y] = positions[i]; if(newMaze[y][x] === 0) newMaze[y][x] = 5; }
         // Ускорения (8 штук)
         for(let i = 90; i < 100 && i < positions.length; i++) { const [x,y] = positions[i]; if(newMaze[y][x] === 0) newMaze[y][x] = 6; }
-        // Телепорты (6 пар = 12 штук)
-        const teleports = [];
-        for(let i = 100; i < 115 && i < positions.length; i++) { const [x,y] = positions[i]; if(newMaze[y][x] === 0) { newMaze[y][x] = 7; teleports.push([x,y]); } }
-        for(let i = 0; i < teleports.length; i += 2) {
-            if(i+1 < teleports.length) {
-                const t1 = teleports[i], t2 = teleports[i+1];
-                teleportPairs[`${t1[0]},${t1[1]}`] = t2;
-                teleportPairs[`${t2[0]},${t2[1]}`] = t1;
-            }
-        }
+        
         return newMaze;
     }
 
@@ -465,12 +453,6 @@
                     ctx.fillStyle = "white";
                     ctx.font = "bold 14px sans-serif";
                     ctx.fillText("⚡", px+8, py+17);
-                } else if(cell === 7) {
-                    ctx.fillStyle = "#aa44ff";
-                    ctx.fillRect(px+4, py+4, 18, 18);
-                    ctx.fillStyle = "white";
-                    ctx.font = "bold 14px sans-serif";
-                    ctx.fillText("🌀", px+8, py+17);
                 } else {
                     const gradient = ctx.createLinearGradient(px, py, px+CELL_SIZE, py+CELL_SIZE);
                     gradient.addColorStop(0, "#f0e6d2");
@@ -559,7 +541,14 @@
             p.finished = true; 
             p.finishTime = Date.now() - raceStartTime;
             p.finishPosition = finishOrder.length + 1;
-            finishOrder.push({ id: localPlayerId, name: p.name, score: p.score, time: p.finishTime, position: p.finishPosition });
+            finishOrder.push({ 
+                id: localPlayerId, 
+                name: p.name, 
+                score: p.score, 
+                time: p.finishTime, 
+                position: p.finishPosition,
+                emoji: p.emoji
+            });
             createEffect(newX, newY, "🏆 ФИНИШ!", "#ffd700");
             refreshUI(); syncPlayerToFirebase(); syncFinishOrder();
             setTimeout(() => {
@@ -574,16 +563,6 @@
         else if(cell === 6) { 
             createEffect(newX, newY, "⚡ УСКОРЕНИЕ", "#44ff44"); 
             gameMaze[newY][newX] = 0; 
-        }
-        else if(cell === 7) {
-            const key = `${newX},${newY}`;
-            if(teleportPairs[key]) { 
-                const [tx, ty] = teleportPairs[key]; 
-                p.x = tx; p.y = ty; 
-                createEffect(newX, newY, "🌀 ТЕЛЕПОРТ", "#aa66ff"); 
-                createEffect(tx, ty, "🌀 ТЕЛЕПОРТ", "#aa66ff"); 
-                gameMaze[newY][newX] = 0; 
-            } else { gameMaze[newY][newX] = 0; }
         }
         refreshUI(); syncPlayerToFirebase();
         return true;
@@ -606,7 +585,16 @@
             <div class="screen">
                 <h2>🏆 ОБЩИЙ РЕЙТИНГ 🏆</h2>
                 <div class="leaderboard">
-                    <ol>${sorted.map(p => `<li class="${p.position === 1 ? 'rank-1' : p.position === 2 ? 'rank-2' : p.position === 3 ? 'rank-3' : ''}"><strong>${p.position}</strong> ${p.name} ⭐ ${p.score} ⏱️ ${(p.time/1000).toFixed(1)}с</li>`).join('')}</ol>
+                    <ol>
+                        ${sorted.map(p => `
+                            <li class="${p.position === 1 ? 'rank-1' : p.position === 2 ? 'rank-2' : p.position === 3 ? 'rank-3' : ''}">
+                                <strong>${p.position}. место</strong> 
+                                <span>${p.emoji || '🧙'} ${p.name}</span>
+                                <span>⭐ ${p.score} очков</span>
+                                <span>⏱️ ${(p.time/1000).toFixed(1)}с</span>
+                            </li>
+                        `).join('')}
+                    </ol>
                 </div>
                 <div class="flex-row" style="display:flex; gap:15px; justify-content:center;">
                     <button id="restartBtn">🔄 Сыграть снова</button>
@@ -629,7 +617,8 @@
             players[localPlayerId] = p; 
         }
         if(firebaseReady) {
-            playersRef.child(localPlayerId).update({ x:1, y:1, score:0, finished:false, finishTime:null });
+            // Очищаем всех игроков в комнате
+            playersRef.set({});
             roomRef.child('finishOrder').set([]);
         }
         startCountdown();
@@ -644,7 +633,7 @@
         }
         gameMaze = decorateMazeWithItems(baseMaze);
         currentScreen = 'game'; renderGameScreen(); 
-        if(firebaseReady) { playersRef.child(localPlayerId).update({ x:1, y:1, score:0, finished:false }); }
+        if(firebaseReady) { syncPlayerToFirebase(); }
     }
 
     function startCountdown() {
@@ -680,7 +669,7 @@
                     <div class="touch-btn" data-dx="0" data-dy="1">▼</div>
                     <div class="touch-btn" data-dx="1" data-dy="0">▶</div>
                 </div>
-                <p style="color:white; margin-top:8px; text-align:center; font-size:0.7rem;">⭐ монетка +10 | ❓ вопрос +5 | ⚠️ заморозка | ⚡ ускорение | 🌀 телепорт</p>
+                <p style="color:white; margin-top:8px; text-align:center; font-size:0.7rem;">⭐ монетка +10 | ❓ вопрос +5 | ⚠️ заморозка | ⚡ ускорение</p>
             </div>
         `;
         document.querySelectorAll('.touch-btn').forEach(btn => {
@@ -696,7 +685,7 @@
             <div class="screen">
                 <div class="ivsu-logo">🏛️ ИВГУ</div>
                 <h2>🔰 Мега-Лабиринт</h2>
-                <p>⭐ Монетки +10 | ❓ Вопросы +5 | ⚠️ Ловушки | ⚡ Ускорение | 🌀 Телепорты</p>
+                <p>⭐ Монетки +10 | ❓ Вопросы +5 | ⚠️ Ловушки | ⚡ Ускорение</p>
                 <div><input type="text" id="playerName" placeholder="Твой никнейм" maxlength="16"></div>
                 <button id="toAvatar">🎮 Выбрать аватара</button>
             </div>
@@ -720,7 +709,12 @@
             <div class="screen">
                 <h2>🎨 Выбери аватара, ${players[localPlayerId]?.name}</h2>
                 <div class="avatar-selector" id="avatarSelector">
-                    ${AVATAR_LIST.map((a, idx) => `<div class="avatar-option ${idx===0?'selected':''}" data-url="${a.imageUrl}" data-color="${a.color}" data-emoji="${a.emoji}"><img src="${a.imageUrl}"><div style="font-size:1.5rem; margin-top:5px;">${a.emoji}</div></div>`).join('')}
+                    ${AVATAR_LIST.map((a, idx) => `
+                        <div class="avatar-option ${idx===0?'selected':''}" data-url="${a.imageUrl}" data-color="${a.color}" data-emoji="${a.emoji}">
+                            <img src="${a.imageUrl}">
+                            <span>${a.emoji}</span>
+                        </div>
+                    `).join('')}
                 </div>
                 <button id="startBtn">🏁 Начать гонку!</button>
             </div>
@@ -738,16 +732,40 @@
             players[localPlayerId].color = selected.color;
             players[localPlayerId].emoji = selected.emoji;
             const img = new Image(); img.src = selected.imageUrl; players[localPlayerId].avatarImg = img;
+            
             if(firebaseReady) {
                 roomRef = db.ref(`rooms/${ROOM_ID}`);
                 playersRef = roomRef.child('players');
+                
+                // При подключении очищаем старых неактивных игроков (старше 30 секунд)
+                playersRef.once('value', (snapshot) => {
+                    const data = snapshot.val();
+                    const now = Date.now();
+                    if(data) {
+                        for(let id in data) {
+                            if(data[id].lastUpdate && now - data[id].lastUpdate > 30000) {
+                                playersRef.child(id).remove();
+                            }
+                        }
+                    }
+                });
+                
                 syncPlayerToFirebase();
+                
                 // Слушаем других игроков
                 playersRef.on('value', (snapshot) => {
                     const data = snapshot.val();
                     if(data) {
+                        // Удаляем старых игроков
+                        const now = Date.now();
                         for(let id in data) {
-                            if(id !== localPlayerId && data[id]) {
+                            if(id !== localPlayerId && data[id] && data[id].lastUpdate && now - data[id].lastUpdate > 30000) {
+                                playersRef.child(id).remove();
+                                delete players[id];
+                            }
+                        }
+                        for(let id in data) {
+                            if(id !== localPlayerId && data[id] && (!players[id] || players[id].finished === false)) {
                                 if(!players[id]) players[id] = {};
                                 players[id].name = data[id].name;
                                 players[id].avatarUrl = data[id].avatarUrl;
@@ -767,6 +785,7 @@
                         refreshUI();
                     }
                 });
+                
                 roomRef.child('finishOrder').on('value', (snapshot) => {
                     const data = snapshot.val();
                     if(data) finishOrder = data;
