@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ИВГУ Лабиринт — Панель организатора</title>
     
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     
@@ -18,15 +17,8 @@
             font-family: 'Segoe UI', 'Poppins', sans-serif;
             padding: 20px;
         }
-        .dashboard {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1 {
-            text-align: center;
-            color: #ffd700;
-            text-shadow: 0 0 10px #ff8c00;
-        }
+        .dashboard { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; color: #ffd700; text-shadow: 0 0 10px #ff8c00; }
         .qr-section {
             text-align: center;
             background: rgba(255,255,255,0.1);
@@ -34,44 +26,11 @@
             padding: 20px;
             margin-bottom: 30px;
         }
-        .qr-code {
-            background: white;
-            display: inline-block;
-            padding: 15px;
-            border-radius: 20px;
-        }
-        .qr-code img {
-            width: 180px;
-            height: 180px;
-            display: block;
-        }
-        .game-link {
-            color: #ffaa44;
-            word-break: break-all;
-            font-size: 1rem;
-            margin-top: 15px;
-            background: rgba(0,0,0,0.5);
-            padding: 8px 15px;
-            border-radius: 30px;
-            display: inline-block;
-        }
-        button {
-            background: #ff5722;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 30px;
-            color: white;
-            cursor: pointer;
-            margin-top: 10px;
-            margin-left: 10px;
-        }
-        button:hover { opacity: 0.9; }
-        .players-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
+        .qr-code { background: white; display: inline-block; padding: 15px; border-radius: 20px; }
+        .qr-code img { width: 180px; height: 180px; display: block; }
+        .game-link { color: #ffaa44; word-break: break-all; font-size: 1rem; margin-top: 15px; background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 30px; display: inline-block; }
+        button { background: #ff5722; border: none; padding: 8px 20px; border-radius: 30px; color: white; cursor: pointer; margin-top: 10px; margin-left: 10px; }
+        .players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-bottom: 30px; }
         .player-card {
             background: rgba(30,30,50,0.8);
             backdrop-filter: blur(10px);
@@ -81,40 +40,16 @@
             transition: 0.2s;
         }
         .player-card.finished { border-color: #4caf50; background: rgba(40,60,40,0.8); }
-        .player-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 10px;
-        }
-        .player-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid gold;
-        }
+        .player-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+        .player-avatar { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid gold; }
         .player-name { font-size: 1.2rem; font-weight: bold; color: white; }
-        .player-stats {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 8px;
-            color: #ddd;
-        }
+        .player-stats { display: flex; justify-content: space-between; margin-top: 8px; color: #ddd; }
         .score { color: #ffd700; font-size: 1.2rem; font-weight: bold; }
         .status.finished { color: #4caf50; }
         .status.playing { color: #ff9800; }
-        .leaderboard-panel {
-            background: rgba(0,0,0,0.6);
-            border-radius: 40px;
-            padding: 20px;
-            margin-top: 20px;
-        }
+        .leaderboard-panel { background: rgba(0,0,0,0.6); border-radius: 40px; padding: 20px; margin-top: 20px; }
         .leaderboard-panel h2 { color: gold; margin-top: 0; }
-        .leaderboard-list {
-            list-style: none;
-            padding: 0;
-        }
+        .leaderboard-list { list-style: none; padding: 0; }
         .leaderboard-list li {
             background: rgba(255,255,255,0.1);
             margin: 8px 0;
@@ -130,28 +65,11 @@
         .rank-3 { background: linear-gradient(90deg, #cd7f32, #b8692a); }
         .waiting { animation: pulse 1.5s infinite; color: #ffaa44; text-align: center; padding: 40px; font-size: 1.2rem; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-        .online-badge {
-            background: #4caf50;
-            border-radius: 20px;
-            padding: 2px 10px;
-            font-size: 0.7rem;
-            margin-left: 10px;
-        }
-        .footer-note {
-            text-align: center;
-            margin-top: 30px;
-            color: rgba(255,255,255,0.5);
-            font-size: 0.8rem;
-        }
-        .connection-status {
-            text-align: center;
-            margin-bottom: 15px;
-            padding: 5px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-        }
+        .online-badge { background: #4caf50; border-radius: 20px; padding: 2px 10px; font-size: 0.7rem; margin-left: 10px; }
+        .footer-note { text-align: center; margin-top: 30px; color: rgba(255,255,255,0.5); font-size: 0.8rem; }
+        .connection-status { text-align: center; margin-bottom: 15px; padding: 5px; border-radius: 20px; font-size: 0.8rem; }
         .connected { background: rgba(76,175,80,0.3); color: #4caf50; }
-        .disconnected { background: rgba(244,67,54,0.3); color: #f44336; }
+        .player-emoji { font-size: 1.5rem; margin-right: 5px; }
     </style>
 </head>
 <body>
@@ -161,34 +79,25 @@
     <div class="qr-section">
         <h3>📱 Сканируйте QR-код для игры</h3>
         <div class="qr-code" id="qrCode">
-            <img src="qr.jpg" alt="QR-код для входа в игру" style="width:180px; height:180px;" onerror="this.onerror=null; this.src='https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://marikalin19.github.io/game/';">
+            <img src="qr.jpg" alt="QR-код" style="width:180px; height:180px;" onerror="this.onerror=null; this.src='https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://marikalin19.github.io/game/';">
         </div>
-        <div class="game-link" id="gameLink">
-            🔗 https://marikalin19.github.io/game/
-        </div>
+        <div class="game-link" id="gameLink">🔗 https://marikalin19.github.io/game/</div>
         <button id="copyLinkBtn">📋 Копировать ссылку</button>
     </div>
     
     <div id="connectionStatus" class="connection-status">🔄 Подключение к Firebase...</div>
     
     <h2>👥 ИГРОКИ ОНЛАЙН <span id="playersCount" class="online-badge">0</span></h2>
-    <div class="players-grid" id="playersGrid">
-        <div class="waiting">⏳ Ожидание подключения игроков...</div>
-    </div>
+    <div class="players-grid" id="playersGrid"><div class="waiting">⏳ Ожидание подключения игроков...</div></div>
     
     <div class="leaderboard-panel">
         <h2>📊 ТАБЛИЦА ЛИДЕРОВ (ФИНИШ)</h2>
-        <ul class="leaderboard-list" id="leaderboardList">
-            <li>Нет финишировавших</li>
-        </ul>
+        <ul class="leaderboard-list" id="leaderboardList"><li>Нет финишировавших</li></ul>
     </div>
-    <div class="footer-note">
-        🖥️ Данные обновляются автоматически в реальном времени
-    </div>
+    <div class="footer-note">🔄 Данные обновляются автоматически в реальном времени</div>
 </div>
 
 <script>
-    // ========== 🔥 FIREBASE КОНФИГУРАЦИЯ ==========
     const firebaseConfig = {
         apiKey: "AIzaSyBiyUPr5amhTM8mZQ7S7Jvfvvf3KBqaTz8",
         authDomain: "game-f045d.firebaseapp.com",
@@ -199,52 +108,32 @@
         appId: "1:159790344496:web:307d3ebeae6da4596b00f5"
     };
     
-    // Инициализация Firebase
-    let db, playersRef, finishOrderRef;
-    let firebaseReady = false;
-    
-    try {
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.database();
-        firebaseReady = true;
-        console.log("✅ Firebase подключен");
-        document.getElementById('connectionStatus').innerHTML = '✅ Подключено к Firebase';
-        document.getElementById('connectionStatus').className = 'connection-status connected';
-    } catch(e) {
-        console.error("❌ Ошибка Firebase:", e);
-        document.getElementById('connectionStatus').innerHTML = '❌ Ошибка подключения к Firebase';
-        document.getElementById('connectionStatus').className = 'connection-status disconnected';
-    }
-    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
     const ROOM_ID = "ivgu_maze_2025";
-    const GAME_URL = "https://marikalin19.github.io/game/";
+    const playersRef = db.ref(`rooms/${ROOM_ID}/players`);
+    const finishOrderRef = db.ref(`rooms/${ROOM_ID}/finishOrder`);
     
-    function escapeHtml(str) { 
-        if(!str) return '';
-        return String(str).replace(/[&<>]/g, function(m) { 
-            if(m === '&') return '&amp;'; 
-            if(m === '<') return '&lt;'; 
-            if(m === '>') return '&gt;'; 
-            return m; 
-        }); 
-    }
+    document.getElementById('connectionStatus').innerHTML = '✅ Подключено к Firebase';
+    document.getElementById('connectionStatus').className = 'connection-status connected';
     
-    function renderPlayers(players) {
+    function escapeHtml(str) { if(!str) return ''; return String(str).replace(/[&<>]/g, function(m) { if(m === '&') return '&amp;'; if(m === '<') return '&lt;'; if(m === '>') return '&gt;'; return m; }); }
+    
+    playersRef.on('value', (snapshot) => {
+        const players = snapshot.val() || {};
+        const playersCount = Object.keys(players).length;
+        document.getElementById('playersCount').textContent = playersCount;
+        
         const playersGrid = document.getElementById('playersGrid');
-        const playersCountSpan = document.getElementById('playersCount');
-        
-        const playersArray = Object.values(players);
-        playersCountSpan.textContent = playersArray.length;
-        
-        if(playersArray.length === 0) {
+        if(playersCount === 0) {
             playersGrid.innerHTML = '<div class="waiting">👥 Нет активных игроков. Попросите отсканировать QR-код!</div>';
         } else {
-            playersGrid.innerHTML = playersArray.map(p => `
+            playersGrid.innerHTML = Object.values(players).map(p => `
                 <div class="player-card ${p.finished ? 'finished' : ''}">
                     <div class="player-header">
                         <img class="player-avatar" src="${p.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/1995/1995572.png'}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1995/1995572.png'">
                         <div>
-                            <div class="player-name">${escapeHtml(p.name)}</div>
+                            <div class="player-name"><span class="player-emoji">${p.emoji || '🧙'}</span> ${escapeHtml(p.name)}</div>
                             <div style="font-size:0.75rem; opacity:0.7;">${p.finished ? `🏁 Финиш: ${p.finishPosition || '?'} место` : '🎯 В пути'}</div>
                         </div>
                     </div>
@@ -252,18 +141,16 @@
                         <span>⭐ <span class="score">${p.score || 0}</span> очков</span>
                         <span class="status ${p.finished ? 'finished' : 'playing'}">${p.finished ? '✅ ФИНИШ' : '⏳ в игре'}</span>
                     </div>
-                    <div style="font-size:0.7rem; opacity:0.6;">
-                        📍 Позиция: (${p.x || 1}, ${p.y || 1})
-                    </div>
+                    <div style="font-size:0.7rem; opacity:0.6;">📍 Позиция: (${p.x || 1}, ${p.y || 1})</div>
                 </div>
             `).join('');
         }
-    }
+    });
     
-    function renderLeaderboard(finishOrder) {
+    finishOrderRef.on('value', (snapshot) => {
+        const finishOrder = snapshot.val() || [];
         const leaderboardList = document.getElementById('leaderboardList');
-        
-        if(!finishOrder || finishOrder.length === 0) {
+        if(finishOrder.length === 0) {
             leaderboardList.innerHTML = '<li>Нет финишировавших</li>';
         } else {
             const sorted = [...finishOrder].sort((a,b) => a.position - b.position);
@@ -276,65 +163,12 @@
                 </li>
             `).join('');
         }
-    }
+    });
     
-    // Функция для получения рейтинга по очкам
-    function renderScoreLeaderboard(players) {
-        // Можно добавить отдельный блок, если нужно
-        const playersArray = Object.values(players);
-        const sortedByScore = [...playersArray].sort((a,b) => (b.score || 0) - (a.score || 0));
-        // Для отображения отдельного топа по очкам можно добавить, пока оставим как есть
-    }
-    
-    function initFirebaseListeners() {
-        if (!firebaseReady) return;
-        
-        playersRef = db.ref(`rooms/${ROOM_ID}/players`);
-        finishOrderRef = db.ref(`rooms/${ROOM_ID}/finishOrder`);
-        
-        // Слушаем изменения игроков
-        playersRef.on('value', (snapshot) => {
-            const players = snapshot.val() || {};
-            renderPlayers(players);
-            
-            // Также обновляем топ по очкам (можно добавить отдельный блок)
-            const playersArray = Object.values(players);
-            const sortedByScore = [...playersArray].sort((a,b) => (b.score || 0) - (a.score || 0));
-            // Можно вывести таблицу лидеров по очкам здесь, если нужно
-        });
-        
-        // Слушаем изменения порядка финиша
-        finishOrderRef.on('value', (snapshot) => {
-            const finishOrder = snapshot.val() || [];
-            renderLeaderboard(finishOrder);
-        });
-        
-        console.log("✅ Firebase слушатели настроены");
-    }
-    
-    function init() {
-        // Устанавливаем ссылку в текст
-        const gameLinkEl = document.getElementById('gameLink');
-        if(gameLinkEl) gameLinkEl.innerHTML = `🔗 ${GAME_URL}`;
-        
-        // Копирование ссылки
-        document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
-            navigator.clipboard.writeText(GAME_URL);
-            alert('✅ Ссылка скопирована!');
-        });
-        
-        // Проверяем QR-код
-        const qrImg = document.querySelector('.qr-code img');
-        if(qrImg && qrImg.complete && qrImg.naturalWidth === 0) {
-            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(GAME_URL)}`;
-        }
-        
-        // Запускаем Firebase слушатели
-        initFirebaseListeners();
-    }
-    
-    // Запуск после загрузки страницы
-    document.addEventListener('DOMContentLoaded', init);
+    document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
+        navigator.clipboard.writeText('https://marikalin19.github.io/game/');
+        alert('✅ Ссылка скопирована!');
+    });
 </script>
 </body>
 </html>
