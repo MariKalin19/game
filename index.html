@@ -29,59 +29,111 @@
             padding: 8px;
         }
 
+        /* Контейнер игры с поддержкой горизонтального режима */
+        .game-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
         canvas {
             display: block;
             margin: 0 auto;
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            cursor: pointer;
             background: #1a1a2e;
-            width: 100%;
+            width: auto;
             height: auto;
+            max-width: 100%;
         }
 
-        /* Мобильные сенсорные кнопки */
-        .mobile-controls {
-            display: none;
-            grid-template-columns: repeat(3, 75px);
-            grid-template-rows: repeat(2, 75px);
-            gap: 12px;
-            justify-content: center;
-            margin-top: 20px;
-            margin-bottom: 10px;
+        /* Джойстик - плавающий, не мешает карте */
+        .joystick-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 130px;
+            height: 130px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px rgba(255,180,70,0.6), 0 8px 20px rgba(0,0,0,0.3);
+            touch-action: none;
+            z-index: 100;
         }
-        .ctrl-btn {
-            background: rgba(0,0,0,0.75);
-            backdrop-filter: blur(10px);
-            border: 2px solid #ffb347;
-            border-radius: 60px;
-            font-size: 2.3rem;
+
+        .joystick-base {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: rgba(30,30,40,0.7);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
+        }
+
+        .joystick-thumb {
+            position: absolute;
+            width: 55px;
+            height: 55px;
+            background: radial-gradient(circle at 30% 30%, #ffaa44, #ff6600);
+            border-radius: 50%;
+            box-shadow: 0 2px 8px black;
             cursor: pointer;
-            transition: 0.05s linear;
-            box-shadow: 0 6px 0 #5a3e1a;
+            transition: transform 0.02s linear;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Индикатор направления */
+        .joystick-direction {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            padding: 8px 16px;
+            border-radius: 40px;
+            color: white;
             font-weight: bold;
-            touch-action: manipulation;
+            font-size: 1.2rem;
+            font-family: monospace;
+            z-index: 100;
+            pointer-events: none;
         }
-        .ctrl-btn:active {
-            transform: translateY(3px);
-            box-shadow: 0 2px 0 #5a3e1a;
-        }
-        @media (max-width: 850px) {
-            .mobile-controls {
-                display: grid;
+
+        @media (max-width: 800px) {
+            .joystick-container {
+                width: 110px;
+                height: 110px;
+                bottom: 20px;
+                right: 20px;
+            }
+            .joystick-thumb {
+                width: 48px;
+                height: 48px;
+            }
+            .joystick-direction {
+                font-size: 1rem;
+                bottom: 20px;
+                left: 20px;
             }
         }
-        @media (max-width: 500px) {
-            .mobile-controls {
-                grid-template-columns: repeat(3, 65px);
-                grid-template-rows: repeat(2, 65px);
-                gap: 10px;
+
+        @media (max-width: 550px) {
+            .joystick-container {
+                width: 95px;
+                height: 95px;
+                bottom: 15px;
+                right: 15px;
             }
-            .ctrl-btn { font-size: 2rem; }
+            .joystick-thumb {
+                width: 42px;
+                height: 42px;
+            }
         }
 
         .screen {
@@ -205,6 +257,7 @@
         }
         .player-avatar-large { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
         .stats-badge { background: rgba(0,0,0,0.7); padding: 5px 18px; border-radius: 40px; font-weight: bold; }
+        
         .question-modal {
             position: fixed;
             top: 0;
@@ -241,25 +294,10 @@
         }
         .flex-row { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
         input { padding: 10px 20px; font-size: 1rem; border-radius: 50px; border: 2px solid #ffb347; width: 240px; text-align: center; }
-        .finish-toast {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            padding: 20px 40px;
-            border-radius: 60px;
-            font-size: 1.6rem;
-            font-weight: bold;
-            z-index: 2000;
-            animation: bounce 0.4s ease;
-            text-align: center;
-            white-space: nowrap;
-        }
-        @keyframes bounce {
-            0% { transform: translate(-50%, -50%) scale(0); }
-            70% { transform: translate(-50%, -50%) scale(1.1); }
-            100% { transform: translate(-50%, -50%) scale(1); }
+
+        @media (orientation: landscape) and (max-width: 900px) {
+            .game-header { font-size: 0.8rem; padding: 5px 12px; }
+            .stats-badge, .player-name-badge { padding: 4px 12px; font-size: 0.8rem; }
         }
     </style>
 </head>
@@ -280,7 +318,6 @@
         { id: 6, name: "Web Dev", imageUrl: "https://cdn-icons-png.flaticon.com/512/1055/1055687.png", color: "#e67e22" }
     ];
 
-    // Генерация лабиринта
     function generateMaze(size) {
         let maze = Array(size).fill().map(() => Array(size).fill(1));
         function carve(x, y) {
@@ -323,7 +360,6 @@
     ];
     function getRandomQuestion() { return { ...questionsBank[Math.floor(Math.random() * questionsBank.length)], id: Date.now() + Math.random() }; }
 
-    // Декорирование предметами
     let teleportPairs = {};
     function decorateMazeWithItems(maze) {
         teleportPairs = {};
@@ -338,32 +374,12 @@
             const j = Math.floor(Math.random() * (i + 1));
             [positions[i], positions[j]] = [positions[j], positions[i]];
         }
-        // монетки
-        for(let i = 0; i < 60 && i < positions.length; i++) {
-            const [x,y] = positions[i];
-            if(newMaze[y][x] === 0) newMaze[y][x] = 2;
-        }
-        // вопросы
-        for(let i = 60; i < 95 && i < positions.length; i++) {
-            const [x,y] = positions[i];
-            if(newMaze[y][x] === 0) newMaze[y][x] = 3;
-        }
-        // ловушки
-        for(let i = 95; i < 115 && i < positions.length; i++) {
-            const [x,y] = positions[i];
-            if(newMaze[y][x] === 0) newMaze[y][x] = 5;
-        }
-        // ускорения
-        for(let i = 115; i < 130 && i < positions.length; i++) {
-            const [x,y] = positions[i];
-            if(newMaze[y][x] === 0) newMaze[y][x] = 6;
-        }
-        // телепорты
+        for(let i = 0; i < 60 && i < positions.length; i++) { const [x,y] = positions[i]; if(newMaze[y][x] === 0) newMaze[y][x] = 2; }
+        for(let i = 60; i < 95 && i < positions.length; i++) { const [x,y] = positions[i]; if(newMaze[y][x] === 0) newMaze[y][x] = 3; }
+        for(let i = 95; i < 115 && i < positions.length; i++) { const [x,y] = positions[i]; if(newMaze[y][x] === 0) newMaze[y][x] = 5; }
+        for(let i = 115; i < 130 && i < positions.length; i++) { const [x,y] = positions[i]; if(newMaze[y][x] === 0) newMaze[y][x] = 6; }
         const teleports = [];
-        for(let i = 130; i < 140 && i < positions.length; i++) {
-            const [x,y] = positions[i];
-            if(newMaze[y][x] === 0) { newMaze[y][x] = 7; teleports.push([x,y]); }
-        }
+        for(let i = 130; i < 140 && i < positions.length; i++) { const [x,y] = positions[i]; if(newMaze[y][x] === 0) { newMaze[y][x] = 7; teleports.push([x,y]); } }
         for(let i = 0; i < teleports.length; i += 2) {
             if(i+1 < teleports.length) {
                 const t1 = teleports[i], t2 = teleports[i+1];
@@ -407,7 +423,6 @@
     effectStyle.textContent = `@keyframes flyUp { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-45px) scale(1.2); opacity: 0; } }`;
     document.head.appendChild(effectStyle);
 
-    // Отрисовка
     function drawGame(ctx) {
         if(!ctx) return;
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -545,10 +560,7 @@
             p.finished = true;
             p.finishTime = Date.now() - raceStartTime;
             p.finishPosition = finishOrder.length + 1;
-            finishOrder.push({ 
-                id: playerId, name: p.name, avatarUrl: p.avatarUrl, 
-                score: p.score, time: p.finishTime, position: p.finishPosition 
-            });
+            finishOrder.push({ id: playerId, name: p.name, avatarUrl: p.avatarUrl, score: p.score, time: p.finishTime, position: p.finishPosition });
             createEffect(newX, newY, "🏆 ФИНИШ!", "#ffd700");
             refreshUI();
             setTimeout(() => {
@@ -568,14 +580,11 @@
             const key = `${newX},${newY}`;
             if(teleportPairs[key]) {
                 const [tx, ty] = teleportPairs[key];
-                p.x = tx;
-                p.y = ty;
+                p.x = tx; p.y = ty;
                 createEffect(newX, newY, "🌀 ТЕЛЕПОРТ", "#aa66ff");
                 createEffect(tx, ty, "🌀 ТЕЛЕПОРТ", "#aa66ff");
                 gameMaze[newY][newX] = 0;
-            } else {
-                gameMaze[newY][newX] = 0;
-            }
+            } else { gameMaze[newY][newX] = 0; }
         }
         refreshUI();
         return true;
@@ -607,24 +616,13 @@
                 <h3>📊 ПОРЯДОК ФИНИША</h3>
                 <div class="leaderboard">
                     <ol>
-                        ${sortedByFinish.map(p => `
-                            <li class="${p.position === 1 ? 'rank-1' : p.position === 2 ? 'rank-2' : p.position === 3 ? 'rank-3' : ''}">
-                                <strong>${p.position} место</strong> 🏁 ${p.name} &nbsp;⭐ ${p.score} очков &nbsp;⏱️ ${(p.time/1000).toFixed(1)}с
-                            </li>
-                        `).join('')}
+                        ${sortedByFinish.map(p => `<li class="${p.position === 1 ? 'rank-1' : p.position === 2 ? 'rank-2' : p.position === 3 ? 'rank-3' : ''}"><strong>${p.position} место</strong> 🏁 ${p.name} &nbsp;⭐ ${p.score} очков &nbsp;⏱️ ${(p.time/1000).toFixed(1)}с</li>`).join('')}
                     </ol>
                 </div>
                 <h3>💰 ТОП ПО ОЧКАМ</h3>
                 <div class="leaderboard">
                     <ol>
-                        ${sortedByScore.slice(0,10).map((pl, idx) => `
-                            <li>
-                                <span>${idx+1 === 1 ? '🥇' : idx+1 === 2 ? '🥈' : idx+1 === 3 ? '🥉' : `${idx+1}.`}</span>
-                                <span>${pl.name}</span>
-                                <span>⭐ ${pl.score}</span>
-                                <span>${pl.finished ? '✅ финиш' : '⏳ не финишировал'}</span>
-                            </li>
-                        `).join('')}
+                        ${sortedByScore.slice(0,10).map((pl, idx) => `<li><span>${idx+1 === 1 ? '🥇' : idx+1 === 2 ? '🥈' : idx+1 === 3 ? '🥉' : `${idx+1}.`}</span><span>${pl.name}</span><span>⭐ ${pl.score}</span><span>${pl.finished ? '✅ финиш' : '⏳ не финишировал'}</span></li>`).join('')}
                     </ol>
                 </div>
                 <div class="flex-row">
@@ -633,20 +631,12 @@
                 </div>
             </div>
         `;
-        document.getElementById('restartGame')?.addEventListener('click', () => {
-            resetGameForReplay();
-            startCountdown();
-        });
-        document.getElementById('mainMenuBtn')?.addEventListener('click', () => {
-            players = {}; localPlayerId = null; nextPlayerId = 1; finishOrder = [];
-            currentScreen = 'welcome';
-            renderWelcomeScreen();
-        });
+        document.getElementById('restartGame')?.addEventListener('click', () => { resetGameForReplay(); startCountdown(); });
+        document.getElementById('mainMenuBtn')?.addEventListener('click', () => { players = {}; localPlayerId = null; nextPlayerId = 1; finishOrder = []; currentScreen = 'welcome'; renderWelcomeScreen(); });
     }
 
     function resetGameForReplay() {
         gameActive = false;
-        const currentPlayerId = localPlayerId;
         const currentName = players[localPlayerId]?.name;
         const currentAvatarUrl = players[localPlayerId]?.avatarUrl;
         const currentColor = players[localPlayerId]?.color;
@@ -655,12 +645,7 @@
         gameMaze = decorateMazeWithItems(baseMaze);
         const img = new Image();
         img.src = currentAvatarUrl || AVATAR_LIST[0].imageUrl;
-        players[currentPlayerId] = {
-            name: currentName || "Игрок", avatarUrl: currentAvatarUrl || AVATAR_LIST[0].imageUrl,
-            color: currentColor || AVATAR_LIST[0].color, x: 1, y: 1, score: 0, finished: false,
-            finishTime: null, hasPendingQuestion: false, frozenUntil: null, avatarImg: img
-        };
-        localPlayerId = currentPlayerId;
+        players[localPlayerId] = { name: currentName || "Игрок", avatarUrl: currentAvatarUrl || AVATAR_LIST[0].imageUrl, color: currentColor || AVATAR_LIST[0].color, x: 1, y: 1, score: 0, finished: false, finishTime: null, hasPendingQuestion: false, frozenUntil: null, avatarImg: img };
     }
 
     function startRace() {
@@ -703,19 +688,108 @@
             const interval = setInterval(() => {
                 count--;
                 if(count >= 1) container.innerHTML = `<div class="countdown">${count}</div>`;
-                else if(count === 0) {
-                    clearInterval(interval);
-                    container.innerHTML = '';
-                    startRace();
-                }
+                else if(count === 0) { clearInterval(interval); container.innerHTML = ''; startRace(); }
             }, 1000);
         }, 50);
     }
 
+    // ----- ДЖОЙСТИК -----
+    let activeJoystick = false;
+    let joystickCenter = { x: 0, y: 0 };
+    let currentDir = { dx: 0, dy: 0 };
+    let lastMoveTime = 0;
+    const MOVE_COOLDOWN = 180; // мс между движениями
+
+    function initJoystick() {
+        const container = document.querySelector('.joystick-container');
+        const thumb = document.querySelector('.joystick-thumb');
+        if(!container || !thumb) return;
+        
+        const baseRect = container.getBoundingClientRect();
+        joystickCenter.x = baseRect.left + baseRect.width/2;
+        joystickCenter.y = baseRect.top + baseRect.height/2;
+        
+        const handleMove = (clientX, clientY) => {
+            if(!activeJoystick) return;
+            let dx = clientX - joystickCenter.x;
+            let dy = clientY - joystickCenter.y;
+            const distance = Math.hypot(dx, dy);
+            const maxDist = container.clientWidth/2 - 10;
+            let normX = 0, normY = 0;
+            if(distance > 0) {
+                normX = dx / distance;
+                normY = dy / distance;
+            }
+            const limitedDist = Math.min(distance, maxDist);
+            const thumbX = normX * limitedDist;
+            const thumbY = normY * limitedDist;
+            thumb.style.transform = `translate(calc(-50% + ${thumbX}px), calc(-50% + ${thumbY}px))`;
+            
+            // Определяем направление (порог 0.4)
+            let newDx = 0, newDy = 0;
+            if(distance > 20) {
+                if(Math.abs(normX) > 0.4) newDx = normX > 0 ? 1 : -1;
+                if(Math.abs(normY) > 0.4) newDy = normY > 0 ? 1 : -1;
+            }
+            if((newDx !== currentDir.dx || newDy !== currentDir.dy) && (newDx !== 0 || newDy !== 0)) {
+                currentDir = { dx: newDx, dy: newDy };
+                const now = Date.now();
+                if(now - lastMoveTime >= MOVE_COOLDOWN) {
+                    tryMove(localPlayerId, newDx, newDy);
+                    lastMoveTime = now;
+                }
+                // обновляем индикатор
+                const dirIndicator = document.getElementById('joystickDirection');
+                if(dirIndicator) {
+                    const dirText = newDx === -1 ? "◀ ЛЕВО" : newDx === 1 ? "ПРАВО ▶" : newDy === -1 ? "ВВЕРХ ▲" : newDy === 1 ? "ВНИЗ ▼" : "●";
+                    dirIndicator.innerHTML = `🎮 ${dirText}`;
+                    setTimeout(() => { if(dirIndicator && currentDir.dx === 0 && currentDir.dy === 0) dirIndicator.innerHTML = `🎮 ГОТОВ`; }, 300);
+                }
+            } else if(distance <= 20 && (currentDir.dx !== 0 || currentDir.dy !== 0)) {
+                currentDir = { dx: 0, dy: 0 };
+                const dirIndicator = document.getElementById('joystickDirection');
+                if(dirIndicator) dirIndicator.innerHTML = `🎮 ГОТОВ`;
+            }
+        };
+        
+        const onStart = (e) => {
+            e.preventDefault();
+            activeJoystick = true;
+            const point = e.touches ? e.touches[0] : e;
+            handleMove(point.clientX, point.clientY);
+        };
+        const onMove = (e) => {
+            if(!activeJoystick) return;
+            e.preventDefault();
+            const point = e.touches ? e.touches[0] : e;
+            handleMove(point.clientX, point.clientY);
+        };
+        const onEnd = () => {
+            activeJoystick = false;
+            currentDir = { dx: 0, dy: 0 };
+            thumb.style.transform = `translate(-50%, -50%)`;
+            const dirIndicator = document.getElementById('joystickDirection');
+            if(dirIndicator) dirIndicator.innerHTML = `🎮 ГОТОВ`;
+        };
+        
+        container.addEventListener('touchstart', onStart, { passive: false });
+        container.addEventListener('touchmove', onMove, { passive: false });
+        container.addEventListener('touchend', onEnd);
+        container.addEventListener('mousedown', onStart);
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onEnd);
+        
+        window.addEventListener('resize', () => {
+            const newRect = container.getBoundingClientRect();
+            joystickCenter.x = newRect.left + newRect.width/2;
+            joystickCenter.y = newRect.top + newRect.height/2;
+        });
+    }
+    
     function renderGameScreen() {
         const p = players[localPlayerId];
         appDiv.innerHTML = `
-            <div>
+            <div class="game-container">
                 <div class="game-header">
                     <div class="player-name-badge">
                         <img class="player-avatar-large" src="${p?.avatarUrl || ''}">
@@ -724,33 +798,17 @@
                     <div class="stats-badge" id="gameStatus">⭐ 0 очков</div>
                 </div>
                 <div id="gameContainerDiv"><canvas id="gameCanvas" width="${MAZE_SIZE * CELL_SIZE}" height="${MAZE_SIZE * CELL_SIZE}"></canvas></div>
-                <div class="mobile-controls" id="mobileControls">
-                    <div></div>
-                    <div class="ctrl-btn" data-dx="0" data-dy="-1">⬆️</div>
-                    <div></div>
-                    <div class="ctrl-btn" data-dx="-1" data-dy="0">⬅️</div>
-                    <div class="ctrl-btn" data-dx="0" data-dy="1">⬇️</div>
-                    <div class="ctrl-btn" data-dx="1" data-dy="0">➡️</div>
+                <div class="joystick-container">
+                    <div class="joystick-base"></div>
+                    <div class="joystick-thumb"></div>
                 </div>
-                <p style="color:white; margin-top:8px; text-align:center; font-size:0.8rem;">⬆️⬇️⬅️➡️ на клавиатуре / кнопки на экране | ⚠️ заморозка | ⚡ ускорение | 🌀 телепорт</p>
+                <div class="joystick-direction" id="joystickDirection">🎮 ГОТОВ</div>
+                <p style="color:white; margin-top:12px; text-align:center; font-size:0.7rem;">⬆️⬇️⬅️➡️ клавиатура | правый джойстик | ⚠️ заморозка | ⚡ ускорение | 🌀 телепорт</p>
             </div>
         `;
         window.removeEventListener('keydown', handleKey);
         window.addEventListener('keydown', handleKey);
-        
-        // Привязываем сенсорные кнопки (мобильное управление)
-        const btns = document.querySelectorAll('.ctrl-btn');
-        btns.forEach(btn => {
-            const dx = parseInt(btn.dataset.dx);
-            const dy = parseInt(btn.dataset.dy);
-            if(isNaN(dx) || isNaN(dy)) return;
-            const moveHandler = (e) => {
-                e.preventDefault();
-                tryMove(localPlayerId, dx, dy);
-            };
-            btn.addEventListener('click', moveHandler);
-            btn.addEventListener('touchstart', moveHandler, { passive: false });
-        });
+        setTimeout(() => { initJoystick(); }, 100);
         refreshUI();
     }
 
@@ -782,11 +840,7 @@
             localPlayerId = newId;
             const img = new Image();
             img.src = AVATAR_LIST[0].imageUrl;
-            players[newId] = {
-                name, avatarUrl: AVATAR_LIST[0].imageUrl, color: AVATAR_LIST[0].color,
-                x: 1, y: 1, score: 0, finished: false, finishTime: null,
-                hasPendingQuestion: false, frozenUntil: null, avatarImg: img
-            };
+            players[newId] = { name, avatarUrl: AVATAR_LIST[0].imageUrl, color: AVATAR_LIST[0].color, x: 1, y: 1, score: 0, finished: false, finishTime: null, hasPendingQuestion: false, frozenUntil: null, avatarImg: img };
             currentScreen = 'avatarPick';
             renderAvatarScreen();
         });
@@ -818,8 +872,7 @@
                 img.src = selected.imageUrl;
                 players[localPlayerId].avatarImg = img;
             }
-            // Никаких ботов! Игра сразу для одного игрока (можно добавить позже)
-            startCountdown();
+            startCountdown(); // сразу начинаем без ботов
         });
     }
 
