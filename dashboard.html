@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ИВГУ Лабиринт — Панель организатора</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
     <style>
         * { box-sizing: border-box; }
         body {
@@ -78,25 +82,13 @@
         .rank-1 { background: linear-gradient(90deg, #ffd700, #ffaa00); color: white !important; }
         .rank-2 { background: linear-gradient(90deg, #c0c0c0, #a0a0a0); color: white !important; }
         .rank-3 { background: linear-gradient(90deg, #cd7f32, #b8692a); color: white !important; }
-        .empty-list {
-            text-align: center;
-            padding: 40px;
-            color: #aaa;
-            font-size: 1.1rem;
-            grid-column: 1 / -1;
-        }
+        .empty-list { text-align: center; padding: 40px; color: #aaa; font-size: 1.1rem; grid-column: 1 / -1; }
         .footer-note { text-align: center; margin-top: 30px; color: rgba(255,255,255,0.5); font-size: 0.8rem; }
         .refresh-btn { background: #2196f3; }
         .auto-refresh { text-align: center; margin-top: 10px; font-size: 0.7rem; color: #4caf50; }
         .player-emoji { font-size: 1.3rem; margin-right: 5px; }
-        .online-badge {
-            background: #4caf50;
-            border-radius: 20px;
-            padding: 2px 10px;
-            font-size: 0.7rem;
-            margin-left: 10px;
-        }
-        .clear-btn { background: #dc3545; }
+        .online-badge { background: #4caf50; border-radius: 20px; padding: 2px 10px; font-size: 0.7rem; margin-left: 10px; }
+        .cloud-status { font-size: 0.7rem; background: rgba(0,0,0,0.5); border-radius: 20px; padding: 2px 8px; margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -111,8 +103,9 @@
         <div class="game-link" id="gameLink">🔗 https://marikalin19.github.io/game/</div>
         <button id="copyLinkBtn">📋 Копировать ссылку</button>
         <button id="refreshBtn" class="refresh-btn">🔄 Обновить</button>
-        <button id="clearDataBtn" class="clear-btn">🗑️ Очистить старые данные</button>
     </div>
+    
+    <div id="cloudStatus" class="auto-refresh" style="margin-bottom: 15px;">🔄 Подключение к Firebase...</div>
     
     <h2>👥 ИГРОКИ ОНЛАЙН <span id="playersCount" class="online-badge">0</span></h2>
     <div id="playersGrid" class="players-grid">
@@ -124,114 +117,80 @@
         <div id="leaderboardContainer">
             <div class="empty-list">🏁 Пока нет финишировавших</div>
         </div>
-        <div class="auto-refresh" id="autoRefreshStatus">🔄 Автообновление: активно (каждые 2 сек)</div>
+        <div class="auto-refresh" id="autoRefreshStatus">🔄 Автообновление: активно (реальное время)</div>
     </div>
     <div class="footer-note">
-        📌 Результаты сохраняются после финиша. Откройте игру на телефоне и начните прохождение.
+        📌 Данные синхронизируются через Firebase в реальном времени
     </div>
 </div>
 
 <script>
-    const GAME_URL = "https://marikalin19.github.io/game/";
-    const STORAGE_KEY_LEADERBOARD = "maze_leaderboard";
-    const STORAGE_KEY_PLAYERS = "maze_players";
+    // ========== 🔥 FIREBASE КОНФИГУРАЦИЯ ==========
+    // ⚠️ ДОЛЖНА БЫТЬ ТАКОЙ ЖЕ, КАК В INDEX.HTML!
+    const firebaseConfig = {
+        apiKey: "AIzaSyBiyUPr5amhTM8mZQ7S7Jvfvvf3KBqaTz8",
+        authDomain: "game-f045d.firebaseapp.com",
+        databaseURL: "https://game-f045d-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "game-f045d",
+        storageBucket: "game-f045d.firebasestorage.app",
+        messagingSenderId: "159790344496",
+        appId: "1:159790344496:web:307d3ebeae6da4596b00f5"
+    };
     
-    // Очистка старых демо-данных
-    function clearOldData() {
-        console.log("🧹 Очистка старых данных...");
+    let firebaseReady = false;
+    let playersRef, finishOrderRef;
+    
+    try {
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        firebaseReady = true;
+        const statusDiv = document.getElementById('cloudStatus');
+        statusDiv.innerHTML = '✅ Подключено к Firebase (реальная синхронизация)';
+        statusDiv.style.color = '#4caf50';
+        console.log("✅ Firebase подключен");
         
-        // Очищаем игроков от демо-записей
-        const playersSaved = localStorage.getItem(STORAGE_KEY_PLAYERS);
-        if(playersSaved) {
-            try {
-                const parsed = JSON.parse(playersSaved);
-                const cleaned = {};
-                for(let id in parsed) {
-                    // Удаляем все демо-записи и тестовые
-                    if(!id.startsWith('demo_') && !id.startsWith('test_') && !parsed[id].name?.includes('Елена') && !parsed[id].name?.includes('Алексей')) {
-                        cleaned[id] = parsed[id];
-                    }
-                }
-                if(Object.keys(cleaned).length === 0) {
-                    localStorage.removeItem(STORAGE_KEY_PLAYERS);
-                } else {
-                    localStorage.setItem(STORAGE_KEY_PLAYERS, JSON.stringify(cleaned));
-                }
-            } catch(e) {}
-        }
+        const ROOM_ID = "ivgu_maze_2025";
+        playersRef = db.ref(`rooms/${ROOM_ID}/players`);
+        finishOrderRef = db.ref(`rooms/${ROOM_ID}/finishOrder`);
         
-        // Очищаем рейтинг от демо-записей
-        const leaderboardSaved = localStorage.getItem(STORAGE_KEY_LEADERBOARD);
-        if(leaderboardSaved) {
-            try {
-                const parsed = JSON.parse(leaderboardSaved);
-                const cleaned = parsed.filter(p => {
-                    return !p.name?.includes('Елена') && !p.name?.includes('Алексей') && !p.id?.startsWith('demo_');
-                });
-                if(cleaned.length === 0) {
-                    localStorage.removeItem(STORAGE_KEY_LEADERBOARD);
-                } else {
-                    localStorage.setItem(STORAGE_KEY_LEADERBOARD, JSON.stringify(cleaned));
-                }
-            } catch(e) {}
-        }
+        // Слушаем изменения игроков
+        playersRef.on('value', (snapshot) => {
+            const players = snapshot.val() || {};
+            renderPlayers(players);
+            console.log("📡 Обновлены игроки:", Object.keys(players).length);
+        });
         
-        loadAndRender();
-        alert('✅ Старые демо-данные очищены!');
+        // Слушаем изменения финишного порядка
+        finishOrderRef.on('value', (snapshot) => {
+            const finishOrder = snapshot.val() || [];
+            renderLeaderboard(finishOrder);
+            console.log("📡 Обновлен рейтинг:", finishOrder.length);
+        });
+        
+    } catch(e) {
+        console.error("❌ Ошибка Firebase:", e);
+        const statusDiv = document.getElementById('cloudStatus');
+        statusDiv.innerHTML = '❌ Ошибка подключения к Firebase';
+        statusDiv.style.color = '#f44336';
+        document.getElementById('playersGrid').innerHTML = '<div class="empty-list">⚠️ Ошибка подключения к серверу</div>';
     }
     
-    function loadAndRender() {
-        console.log("🔄 Загрузка данных...", new Date().toLocaleTimeString());
-        
-        // Загрузка игроков
-        let players = {};
-        const playersSaved = localStorage.getItem(STORAGE_KEY_PLAYERS);
-        if(playersSaved) {
-            try {
-                const parsed = JSON.parse(playersSaved);
-                // Фильтруем демо-игроков и старых
-                for(let id in parsed) {
-                    const player = parsed[id];
-                    if(!id.startsWith('demo_') && !id.startsWith('test_') && 
-                       player.name !== 'Елена' && player.name !== 'Алексей' &&
-                       !player.name?.includes('Елена') && !player.name?.includes('Алексей')) {
-                        players[id] = player;
-                    }
-                }
-            } catch(e) {
-                console.warn("Ошибка парсинга игроков", e);
-            }
-        }
-        
-        // Загрузка рейтинга
-        let finishOrder = [];
-        const leaderboardSaved = localStorage.getItem(STORAGE_KEY_LEADERBOARD);
-        if(leaderboardSaved) {
-            try {
-                const parsed = JSON.parse(leaderboardSaved);
-                finishOrder = parsed.filter(p => {
-                    return p.name !== 'Елена' && p.name !== 'Алексей' && 
-                           !p.name?.includes('Елена') && !p.name?.includes('Алексей');
-                });
-            } catch(e) {
-                console.warn("Ошибка парсинга рейтинга", e);
-            }
-        }
-        
-        // Обновление UI
-        updatePlayersUI(players);
-        updateLeaderboardUI(finishOrder);
-        
-        // Обновление счётчика
-        const playersCount = Object.keys(players).length;
-        document.getElementById('playersCount').textContent = playersCount;
-        
-        console.log(`✅ Загружено: игроков=${playersCount}, финишировавших=${finishOrder.length}`);
+    function escapeHtml(str) { 
+        if(!str) return '';
+        return String(str).replace(/[&<>]/g, function(m) { 
+            if(m === '&') return '&amp;'; 
+            if(m === '<') return '&lt;'; 
+            if(m === '>') return '&gt;'; 
+            return m; 
+        }); 
     }
     
-    function updatePlayersUI(players) {
+    function renderPlayers(players) {
         const playersGrid = document.getElementById('playersGrid');
+        const playersCountSpan = document.getElementById('playersCount');
         const playersArray = Object.values(players);
+        
+        playersCountSpan.textContent = playersArray.length;
         
         if(playersArray.length === 0) {
             playersGrid.innerHTML = '<div class="empty-list">👥 Нет активных игроков. Попросите отсканировать QR-код и начать игру!</div>';
@@ -252,11 +211,12 @@
                     <span class="status ${p.finished ? 'finished' : 'playing'}">${p.finished ? '✅ ФИНИШ' : '⏳ в игре'}</span>
                 </div>
                 <div style="font-size:0.7rem; opacity:0.6;">📍 Позиция: (${p.x || 1}, ${p.y || 1})</div>
+                <div style="font-size:0.6rem; opacity:0.4;">🆔 ${p.id?.substring(0,8)}...</div>
             </div>
         `).join('');
     }
     
-    function updateLeaderboardUI(finishOrder) {
+    function renderLeaderboard(finishOrder) {
         const container = document.getElementById('leaderboardContainer');
         
         if(!finishOrder || finishOrder.length === 0) {
@@ -283,67 +243,29 @@
         `;
     }
     
-    function escapeHtml(str) { 
-        if(!str) return '';
-        return String(str).replace(/[&<>]/g, function(m) { 
-            if(m === '&') return '&amp;'; 
-            if(m === '<') return '&lt;'; 
-            if(m === '>') return '&gt;'; 
-            return m; 
-        }); 
-    }
-    
-    function forceRefresh() {
-        console.log("🔄 Принудительное обновление...");
-        loadAndRender();
-        const statusDiv = document.getElementById('autoRefreshStatus');
-        statusDiv.innerHTML = '✅ Обновлено!';
-        setTimeout(() => {
-            statusDiv.innerHTML = '🔄 Автообновление: активно (каждые 2 сек)';
-        }, 1500);
-    }
-    
     function init() {
-        // Устанавливаем ссылку
-        document.getElementById('gameLink').innerHTML = `🔗 ${GAME_URL}`;
+        const gameUrl = "https://marikalin19.github.io/game/";
+        document.getElementById('gameLink').innerHTML = `🔗 ${gameUrl}`;
         
-        // Кнопка копирования
         document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
-            navigator.clipboard.writeText(GAME_URL);
+            navigator.clipboard.writeText(gameUrl);
             alert('✅ Ссылка скопирована!');
         });
         
-        // Кнопка обновления
-        document.getElementById('refreshBtn')?.addEventListener('click', forceRefresh);
-        
-        // Кнопка очистки старых данных
-        document.getElementById('clearDataBtn')?.addEventListener('click', clearOldData);
-        
-        // Первая загрузка с очисткой
-        clearOldData();
-        
-        // Автообновление каждые 2 секунды
-        setInterval(() => {
-            loadAndRender();
-        }, 2000);
-        
-        // Слушаем изменения localStorage
-        window.addEventListener('storage', (e) => {
-            if(e.key === STORAGE_KEY_LEADERBOARD || e.key === STORAGE_KEY_PLAYERS) {
-                console.log("📡 Обнаружено изменение в другой вкладке:", e.key);
-                loadAndRender();
-            }
+        document.getElementById('refreshBtn')?.addEventListener('click', () => {
+            const statusDiv = document.getElementById('autoRefreshStatus');
+            statusDiv.innerHTML = '🔄 Данные обновлены!';
+            setTimeout(() => {
+                statusDiv.innerHTML = '🔄 Автообновление: активно (реальное время)';
+            }, 1500);
         });
         
-        // Настройка QR-кода
         const qrImg = document.querySelector('.qr-code img');
-        if(qrImg) {
-            qrImg.onerror = function() {
-                this.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(GAME_URL)}`;
-            };
+        if(qrImg && qrImg.complete && qrImg.naturalWidth === 0) {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(gameUrl)}`;
         }
         
-        console.log("🎮 Дашборд запущен. Ожидание данных от игры...");
+        console.log("🎮 Дашборд запущен. Ожидание данных от Firebase...");
     }
     
     init();
