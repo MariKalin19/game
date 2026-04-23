@@ -14,7 +14,7 @@
             padding: 20px;
         }
         .dashboard { max-width: 800px; margin: 0 auto; }
-        h1 { text-align: center; color: #ffd700; text-shadow: 0 0 10px #ff8c00; }
+        h1 { text-align: center; color: #ffd700; text-shadow: 0 0 10px #ff8c00; margin-bottom: 20px; }
         
         .qr-section {
             text-align: center;
@@ -34,6 +34,7 @@
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 15px;
             margin-bottom: 30px;
+            min-height: 200px;
         }
         .player-card {
             background: rgba(30,30,50,0.8);
@@ -79,9 +80,10 @@
         .rank-3 { background: linear-gradient(90deg, #cd7f32, #b8692a); color: white !important; }
         .empty-list {
             text-align: center;
-            padding: 30px;
+            padding: 40px;
             color: #aaa;
             font-size: 1.1rem;
+            grid-column: 1 / -1;
         }
         .footer-note { text-align: center; margin-top: 30px; color: rgba(255,255,255,0.5); font-size: 0.8rem; }
         .refresh-btn { background: #2196f3; }
@@ -93,6 +95,12 @@
             padding: 2px 10px;
             font-size: 0.7rem;
             margin-left: 10px;
+        }
+        .status-text {
+            font-size: 0.8rem;
+            color: #888;
+            text-align: center;
+            margin-top: 5px;
         }
     </style>
 </head>
@@ -107,33 +115,30 @@
         </div>
         <div class="game-link" id="gameLink">🔗 https://marikalin19.github.io/game/</div>
         <button id="copyLinkBtn">📋 Копировать ссылку</button>
-        <button id="refreshBtn" class="refresh-btn">🔄 Обновить</button>
+        <button id="refreshBtn" class="refresh-btn">🔄 Обновить сейчас</button>
     </div>
     
     <h2>👥 ИГРОКИ ОНЛАЙН <span id="playersCount" class="online-badge">0</span></h2>
-    <div class="players-grid" id="playersGrid">
+    <div id="playersGrid" class="players-grid">
         <div class="empty-list">⏳ Ожидание подключения игроков...</div>
     </div>
     
     <div class="leaderboard-panel">
         <h2>📊 ТАБЛИЦА РЕЙТИНГА (ФИНИШ)</h2>
         <div id="leaderboardContainer">
-            <div class="empty-list">Загрузка...</div>
+            <div class="empty-list">🏁 Пока нет финишировавших</div>
         </div>
-        <div class="auto-refresh" id="autoRefreshStatus">🔄 Обновляется автоматически</div>
+        <div class="auto-refresh" id="autoRefreshStatus">🔄 Автообновление: активно</div>
     </div>
     <div class="footer-note">
-        📌 Результаты сохраняются после финиша. Откройте игру на телефоне, чтобы увидеть игрока.
+        📌 Результаты сохраняются после финиша. Откройте игру на телефоне и начните прохождение.
     </div>
 </div>
 
 <script>
     const GAME_URL = "https://marikalin19.github.io/game/";
-    const STORAGE_KEY = "maze_leaderboard";
-    const PLAYERS_KEY = "maze_players";
-    
-    let currentPlayers = {};
-    let currentFinishOrder = [];
+    const STORAGE_KEY_LEADERBOARD = "maze_leaderboard";
+    const STORAGE_KEY_PLAYERS = "maze_players";
     
     function escapeHtml(str) { 
         if(!str) return '';
@@ -145,52 +150,70 @@
         }); 
     }
     
-    // Загрузка рейтинга из localStorage
-    function loadLeaderboard() {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if(saved) {
-            try {
-                currentFinishOrder = JSON.parse(saved);
-            } catch(e) {
-                console.warn("Ошибка парсинга рейтинга", e);
-                currentFinishOrder = [];
+    // Функция для проверки и очистки устаревших игроков (старше 30 секунд)
+    function cleanupOldPlayers(players) {
+        const now = Date.now();
+        const filtered = {};
+        for(let id in players) {
+            const player = players[id];
+            // Если игрок не финишировал и данные старее 30 секунд — удаляем
+            if(player.finished || (player.lastUpdate && now - player.lastUpdate < 30000)) {
+                filtered[id] = player;
+            } else if(!player.lastUpdate && !player.finished) {
+                // Если нет временной метки, но игрок активен — оставляем
+                filtered[id] = player;
             }
-        } else {
-            currentFinishOrder = [];
         }
-        return currentFinishOrder;
+        return filtered;
     }
     
-    // Загрузка активных игроков из localStorage (только реальные)
-    function loadPlayers() {
-        const saved = localStorage.getItem(PLAYERS_KEY);
-        if(saved) {
+    function loadAndRender() {
+        console.log("🔄 Загрузка данных...", new Date().toLocaleTimeString());
+        
+        // Загрузка игроков
+        let players = {};
+        const playersSaved = localStorage.getItem(STORAGE_KEY_PLAYERS);
+        if(playersSaved) {
             try {
-                const parsed = JSON.parse(saved);
-                // Фильтруем только реальных игроков (исключаем demo_*)
-                currentPlayers = {};
+                const parsed = JSON.parse(playersSaved);
+                // Фильтруем демо-игроков и устаревших
                 for(let id in parsed) {
-                    if(!id.startsWith('demo_')) {
-                        currentPlayers[id] = parsed[id];
+                    if(!id.startsWith('demo_') && !id.startsWith('test_')) {
+                        players[id] = parsed[id];
                     }
                 }
+                // Очищаем устаревших
+                players = cleanupOldPlayers(players);
             } catch(e) {
                 console.warn("Ошибка парсинга игроков", e);
-                currentPlayers = {};
             }
-        } else {
-            currentPlayers = {};
         }
-        return currentPlayers;
+        
+        // Загрузка рейтинга
+        let finishOrder = [];
+        const leaderboardSaved = localStorage.getItem(STORAGE_KEY_LEADERBOARD);
+        if(leaderboardSaved) {
+            try {
+                finishOrder = JSON.parse(leaderboardSaved);
+            } catch(e) {
+                console.warn("Ошибка парсинга рейтинга", e);
+            }
+        }
+        
+        // Обновление UI
+        updatePlayersUI(players);
+        updateLeaderboardUI(finishOrder);
+        
+        // Обновление счётчика
+        const playersCount = Object.keys(players).length;
+        document.getElementById('playersCount').textContent = playersCount;
+        
+        console.log(`✅ Загружено: игроков=${playersCount}, финишировавших=${finishOrder.length}`);
     }
     
-    function renderPlayers() {
-        const players = currentPlayers;
+    function updatePlayersUI(players) {
         const playersGrid = document.getElementById('playersGrid');
-        const playersCountSpan = document.getElementById('playersCount');
         const playersArray = Object.values(players);
-        
-        playersCountSpan.textContent = playersArray.length;
         
         if(playersArray.length === 0) {
             playersGrid.innerHTML = '<div class="empty-list">👥 Нет активных игроков. Попросите отсканировать QR-код и начать игру!</div>';
@@ -215,12 +238,11 @@
         `).join('');
     }
     
-    function renderLeaderboard() {
+    function updateLeaderboardUI(finishOrder) {
         const container = document.getElementById('leaderboardContainer');
-        const finishOrder = currentFinishOrder;
         
         if(!finishOrder || finishOrder.length === 0) {
-            container.innerHTML = '<div class="empty-list">🏁 Пока нет результатов. Пройдите лабиринт до конца!</div>';
+            container.innerHTML = '<div class="empty-list">🏁 Пока нет финишировавших</div>';
             return;
         }
         
@@ -243,56 +265,57 @@
         `;
     }
     
-    function refreshAll() {
-        loadLeaderboard();
-        loadPlayers();
-        renderPlayers();
-        renderLeaderboard();
-        
-        const timestamp = new Date().toLocaleTimeString();
-        const playersCount = Object.keys(currentPlayers).length;
-        const finishCount = currentFinishOrder.length;
-        console.log(`[${timestamp}] Обновлено: игроков=${playersCount}, рейтинг=${finishCount}`);
+    // Принудительное обновление с очисткой кэша
+    function forceRefresh() {
+        console.log("🔄 Принудительное обновление...");
+        loadAndRender();
+        const statusDiv = document.getElementById('autoRefreshStatus');
+        statusDiv.innerHTML = '✅ Обновлено!';
+        setTimeout(() => {
+            statusDiv.innerHTML = '🔄 Автообновление: активно';
+        }, 1500);
     }
     
+    // Инициализация
     function init() {
+        // Устанавливаем ссылку
         document.getElementById('gameLink').innerHTML = `🔗 ${GAME_URL}`;
         
+        // Кнопка копирования
         document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
             navigator.clipboard.writeText(GAME_URL);
             alert('✅ Ссылка скопирована!');
         });
         
-        document.getElementById('refreshBtn')?.addEventListener('click', () => {
-            refreshAll();
-            const statusDiv = document.getElementById('autoRefreshStatus');
-            statusDiv.innerHTML = '🔄 Данные обновлены!';
-            setTimeout(() => {
-                statusDiv.innerHTML = '🔄 Обновляется автоматически';
-            }, 1500);
-        });
+        // Кнопка обновления
+        document.getElementById('refreshBtn')?.addEventListener('click', forceRefresh);
         
         // Первая загрузка
-        refreshAll();
+        loadAndRender();
         
-        // Автообновление каждые 3 секунды
+        // Автообновление каждые 2 секунды
         setInterval(() => {
-            refreshAll();
-        }, 3000);
+            loadAndRender();
+        }, 2000);
         
-        // Слушаем изменения localStorage (если игра открыта в другой вкладке)
+        // Слушаем изменения localStorage (для синхронизации между вкладками)
         window.addEventListener('storage', (e) => {
-            if(e.key === STORAGE_KEY || e.key === PLAYERS_KEY) {
-                console.log("Обнаружено изменение в другой вкладке!");
-                refreshAll();
+            if(e.key === STORAGE_KEY_LEADERBOARD || e.key === STORAGE_KEY_PLAYERS) {
+                console.log("📡 Обнаружено изменение в другой вкладке:", e.key);
+                loadAndRender();
             }
         });
         
         // Настройка QR-кода
         const qrImg = document.querySelector('.qr-code img');
-        if(qrImg && qrImg.complete && qrImg.naturalWidth === 0) {
-            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(GAME_URL)}`;
+        if(qrImg) {
+            qrImg.onerror = function() {
+                this.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(GAME_URL)}`;
+            };
         }
+        
+        // Добавляем тестовую кнопку для отладки (можно удалить позже)
+        console.log("🎮 Дашборд запущен. Ожидание данных от игры...");
     }
     
     init();
