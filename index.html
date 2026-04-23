@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ИВГУ Мега-Лабиринт — Цифровая экономика</title>
-    
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    
     <style>
         * {
             box-sizing: border-box;
@@ -43,7 +38,7 @@
             display: block;
             margin: 0 auto;
             border-radius: 24px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
             background: #1a1a2e;
             max-width: 100%;
             height: auto;
@@ -135,23 +130,24 @@
             flex-wrap: wrap;
         }
         .avatar-option {
-            width: 75px;
-            height: 85px;
+            width: 80px;
+            height: 100px;
             border-radius: 50px;
             cursor: pointer;
             border: 3px solid white;
             transition: 0.2s;
-            overflow: hidden;
-            background: #f0f0f0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 8px;
         }
-        .avatar-option img { width: 45px; height: 45px; object-fit: cover; border-radius: 50%; }
-        .avatar-option span { font-size: 1.3rem; margin-top: 2px; }
-        .avatar-option.selected { transform: scale(1.08); border: 4px solid gold; box-shadow: 0 0 0 3px #ffd966; }
+        .avatar-option img { width: 55px; height: 55px; object-fit: cover; border-radius: 50%; border: 2px solid gold; }
+        .avatar-option span { font-size: 1.3rem; margin-top: 5px; }
+        .avatar-option div { font-size: 0.7rem; color: white; margin-top: 3px; }
+        .avatar-option.selected { transform: scale(1.08); border: 4px solid gold; box-shadow: 0 0 0 3px #ffd966; background: rgba(0,0,0,0.7); }
 
         .leaderboard {
             background: linear-gradient(135deg, #2c2c3a, #1a1a2a);
@@ -253,63 +249,34 @@
 <div id="app"></div>
 
 <script>
-    // ========== FIREBASE КОНФИГУРАЦИЯ ==========
-    const firebaseConfig = {
-        apiKey: "AIzaSyBiyUPr5amhTM8mZQ7S7Jvfvvf3KBqaTz8",
-        authDomain: "game-f045d.firebaseapp.com",
-        databaseURL: "https://game-f045d-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "game-f045d",
-        storageBucket: "game-f045d.firebasestorage.app",
-        messagingSenderId: "159790344496",
-        appId: "1:159790344496:web:307d3ebeae6da4596b00f5"
-    };
-    
-    let db = null;
-    let roomRef = null;
-    let playersRef = null;
-    let firebaseReady = false;
-    
-    // Инициализация Firebase
-    try {
-        if (typeof firebase !== 'undefined') {
-            const app = firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            firebaseReady = true;
-            console.log("✅ Firebase подключен");
-        } else {
-            console.warn("Firebase SDK не загружен");
-        }
-    } catch(e) {
-        console.error("❌ Ошибка Firebase:", e);
-    }
-    
     // ========== НАСТРОЙКИ ИГРЫ ==========
     const MAZE_SIZE = 30;
     const CELL_SIZE = 26;
-    const ROOM_ID = "ivgu_maze_2025";
 
+    // ВАШИ НОВЫЕ ИКОНКИ (вставлены)
     const AVATAR_LIST = [
-        { id: 1, name: "Маг", imageUrl: "https://pic.rtbcdn.ru/video/2026-03-03/50/02/50020fcd78f106f1fbcd13a417ea456c.jpg&quot;, color: "#8B5CF6", emoji: "🧙" },
-        { id: 2, name: "Воин", imageUrl: "https://i.pinimg.com/736x/b0/62/c0/b062c0839970c5a25ab0fe88cb185661.jpg&quot;, color: "#EF4444", emoji: "⚔️" },
-        { id: 3, name: "Эльф", imageUrl: "https://avatars.mds.yandex.net/i?id=5eca1a4c62663c8526e15cfb883bf151_l-5405548-images-thumbs&n=13&quot;, color: "#10B981", emoji: "🏹" },
-        { id: 4, name: "Гном", imageUrl: "https://i.pinimg.com/originals/4a/03/e1/4a03e179422ceb1284f97f0e9bdc3bb9.jpg&quot;, color: "#F59E0B", emoji: "⛏️" },
-        { id: 5, name: "Некромант", imageUrl: "https://i.pinimg.com/originals/1f/ed/15/1fed15dcb1fbc206902322db3335212e.jpg?nii=t&quot;, color: "#A855F7", emoji: "💀" },
-        { id: 6, name: "Паладин", imageUrl: "https://i.pinimg.com/736x/ed/0c/b8/ed0cb8dc4b2c6c795b42b8a65e4087eb.jpg&quot;, color: "#3B82F6", emoji: "🛡️" }
+        { id: 1, name: "Маг", imageUrl: "https://cdn-icons-png.flaticon.com/512/4472/4472533.png", color: "#8B5CF6", emoji: "🧙" },
+        { id: 2, name: "Воин", imageUrl: "https://cdn-icons-png.flaticon.com/512/4472/4472510.png", color: "#EF4444", emoji: "⚔️" },
+        { id: 3, name: "Эльф", imageUrl: "https://cdn-icons-png.flaticon.com/512/4472/4472516.png", color: "#10B981", emoji: "🏹" },
+        { id: 4, name: "Гном", imageUrl: "https://cdn-icons-png.flaticon.com/512/4472/4472521.png", color: "#F59E0B", emoji: "⛏️" },
+        { id: 5, name: "Некромант", imageUrl: "https://cdn-icons-png.flaticon.com/512/4472/4472507.png", color: "#A855F7", emoji: "💀" },
+        { id: 6, name: "Паладин", imageUrl: "https://cdn-icons-png.flaticon.com/512/4472/4472525.png", color: "#3B82F6", emoji: "🛡️" }
     ];
 
+    // Вопросы (12 штук)
     const questionsBank = [
         { text: "💾 Что из перечисленного является оперативной памятью?", options: ["Жесткий диск", "SSD-накопитель", "RAM", "Процессор"], correct: 2 },
         { text: "🔢 Сколько бит в одном байте?", options: ["2", "8", "16", "1024"], correct: 1 },
         { text: "💻 Какой системой счисления пользуется компьютер внутри себя?", options: ["Десятичной", "Двоичной", "Шестнадцатеричной", "Троичной"], correct: 1 },
-        { text: "📋 Что такое алгоритм?", options: ["Название программы", "Последовательность действий", "Ошибка в коде", "Тип процессора"], correct: 1 },
-        { text: "🌐 Что означает IP-адрес?", options: ["Internet Protocol Address", "Internal Program Access", "Important Computer Code", "Internet Password"], correct: 0 },
-        { text: "⚡ Для чего нужен кэш процессора?", options: ["Для хранения фильмов", "Для ускорения доступа к данным", "Для подключения к интернету", "Для вывода изображения"], correct: 1 },
-        { text: "🧮 Что выведет код: x=5; y=3; print(x+y*2)", options: ["16", "11", "10", "13"], correct: 1 },
-        { text: "🔄 Что такое цикл в программировании?", options: ["Тип данных", "Повторение блока кода", "Графический интерфейс", "Ошибка"], correct: 1 },
-        { text: "⚖️ Разница между = и ==", options: ["Нет разницы", "= присваивание, == сравнение", "= сравнение, == присваивание", "Оба для вывода"], correct: 1 },
-        { text: "🗄️ Как называется запись о человеке в БД?", options: ["Поле", "Ячейка", "Строка (запись)", "Формула"], correct: 2 },
-        { text: "🔐 Что такое двухфакторная аутентификация?", options: ["Два пароля", "Пароль + СМС/отпечаток", "Два логина", "Два монитора"], correct: 1 },
-        { text: "⌨️ Что делает Ctrl+Z?", options: ["Сохраняет", "Копирует", "Отменяет действие", "Закрывает"], correct: 2 }
+        { text: "📋 Что такое алгоритм?", options: ["Название программы", "Последовательность действий для решения задачи", "Ошибка в коде", "Тип процессора"], correct: 1 },
+        { text: "🌐 Что означает аббревиатура IP-адрес?", options: ["Internet Protocol Address", "Internal Program Access", "Important Computer Code", "Internet Password"], correct: 0 },
+        { text: "⚡ Для чего нужен кэш (cache) процессора?", options: ["Для долговременного хранения фильмов", "Для ускорения доступа к часто используемым данным", "Для подключения к интернету", "Для вывода изображения на монитор"], correct: 1 },
+        { text: "🧮 Что выведет на экран этот код? x = 5; y = 3; print(x + y * 2)", options: ["16", "11", "10", "13"], correct: 1 },
+        { text: "🔄 Что такое «цикл» в программировании?", options: ["Тип данных для хранения текста", "Конструкция, которая повторяет блок кода несколько раз", "Графический интерфейс программы", "Ошибка компиляции"], correct: 1 },
+        { text: "⚖️ В чем разница между «=» и «==» в большинстве языков?", options: ["Никакой разницы", "= — присваивание, == — сравнение", "= — сравнение, == — присваивание", "Оба используются для вывода данных"], correct: 1 },
+        { text: "🗄️ Как в базах данных принято называть одну запись об одном человеке?", options: ["Поле", "Ячейка", "Строка (запись)", "Формула"], correct: 2 },
+        { text: "🔐 Что такое двухфакторная аутентификация (2FA)?", options: ["Два пароля подряд", "Вход по отпечатку пальца + по СМС-коду", "Два разных логина", "Два монитора у компьютера"], correct: 1 },
+        { text: "⌨️ Что делает кнопка «Ctrl + Z» в любом редакторе?", options: ["Сохраняет файл", "Копирует выделенный фрагмент", "Отменяет последнее действие", "Закрывает программу"], correct: 2 }
     ];
     
     function getRandomQuestion() { 
@@ -345,6 +312,7 @@
     let baseMaze = generateMaze(MAZE_SIZE);
     baseMaze[MAZE_SIZE-2][MAZE_SIZE-2] = 4;
 
+    // Декорирование предметами (без телепортов)
     function decorateMazeWithItems(maze) {
         let newMaze = maze.map(row => [...row]);
         let positions = [];
@@ -379,38 +347,12 @@
 
     let gameMaze = decorateMazeWithItems(baseMaze);
     let players = {};
-    let localPlayerId = null;
+    let localPlayerId = "player_1";
     let gameActive = false;
     let raceStartTime = 0;
     let finishOrder = [];
     let currentScreen = 'welcome';
     let appDiv;
-    let playersListener = null;
-    let finishListener = null;
-
-    // Функции синхронизации
-    function syncPlayerToFirebase() {
-        if (!firebaseReady || !localPlayerId || !players[localPlayerId] || !playersRef) return;
-        const player = players[localPlayerId];
-        playersRef.child(localPlayerId).set({
-            name: player.name,
-            avatarUrl: player.avatarUrl,
-            color: player.color,
-            emoji: player.emoji,
-            x: player.x,
-            y: player.y,
-            score: player.score,
-            finished: player.finished,
-            finishTime: player.finishTime || null,
-            finishPosition: player.finishPosition || null,
-            lastUpdate: Date.now()
-        }).catch(e => console.warn("Sync error:", e));
-    }
-    
-    function syncFinishOrder() {
-        if (!firebaseReady || !roomRef) return;
-        roomRef.child('finishOrder').set(finishOrder).catch(e => console.warn("Finish order error:", e));
-    }
 
     function createEffect(x, y, text, color) {
         const canvas = document.getElementById('gameCanvas');
@@ -489,24 +431,6 @@
             }
         }
         
-        for(let pid in players) {
-            const p = players[pid];
-            if(p && !p.finished && pid !== localPlayerId) {
-                ctx.fillStyle = p.color;
-                ctx.beginPath(); 
-                ctx.arc(p.x * CELL_SIZE + CELL_SIZE/2, p.y * CELL_SIZE + CELL_SIZE/2, 10, 0, 2*Math.PI); 
-                ctx.fill();
-                ctx.font = "16px sans-serif";
-                ctx.fillStyle = "white";
-                ctx.fillText(p.emoji || "🧙", p.x * CELL_SIZE + 8, p.y * CELL_SIZE + 18);
-                ctx.strokeStyle = "#fff";
-                ctx.lineWidth = 1.5;
-                ctx.beginPath(); 
-                ctx.arc(p.x * CELL_SIZE + CELL_SIZE/2, p.y * CELL_SIZE + CELL_SIZE/2, 12, 0, 2*Math.PI); 
-                ctx.stroke();
-            }
-        }
-        
         const localP = players[localPlayerId];
         if(localP && !localP.finished) {
             ctx.fillStyle = localP.color;
@@ -545,7 +469,6 @@
                     document.body.removeChild(modal); 
                     createEffect(player.x, player.y, "+5", "#2ecc71");
                     refreshUI(); 
-                    syncPlayerToFirebase();
                 } else {
                     const fb = card.querySelector('#qFeedback');
                     fb.innerHTML = '❌ Неправильно! Попробуй ещё раз';
@@ -591,14 +514,9 @@
             });
             createEffect(newX, newY, "🏆 ФИНИШ!", "#ffd700");
             refreshUI(); 
-            syncPlayerToFirebase(); 
-            syncFinishOrder();
+            gameActive = false;
             setTimeout(() => {
-                const allFinished = Object.values(players).every(p => p.finished === true);
-                if(allFinished) { 
-                    gameActive = false; 
-                    showGlobalLeaderboard(); 
-                }
+                showGlobalLeaderboard();
             }, 600);
         }
         else if(cell === 5) { 
@@ -610,7 +528,6 @@
             gameMaze[newY][newX] = 0; 
         }
         refreshUI(); 
-        syncPlayerToFirebase();
         return true;
     }
 
@@ -623,8 +540,7 @@
         const status = document.getElementById('gameStatus');
         const p = players[localPlayerId];
         if(status && p) {
-            const finished = Object.values(players).filter(pl => pl.finished).length;
-            status.innerHTML = `⭐ ${p.score} | ${p.finished ? "🏁 ФИНИШ" : "🎯 В пути"} | 🏁 ${finished}/${Object.keys(players).length}`;
+            status.innerHTML = `⭐ ${p.score} | ${p.finished ? "🏁 ФИНИШ" : "🎯 В пути"}`;
         }
     }
 
@@ -666,27 +582,7 @@
             p.finishTime = null; p.hasPendingQuestion = false; p.frozenUntil = null; 
             players[localPlayerId] = p; 
         }
-        if(firebaseReady && playersRef) {
-            playersRef.set({});
-            if(roomRef) roomRef.child('finishOrder').set([]);
-        }
         startCountdown();
-    }
-
-    // Функция для очистки старых игроков
-    function cleanupOldPlayers() {
-        if (!firebaseReady || !playersRef) return;
-        playersRef.once('value', (snapshot) => {
-            const data = snapshot.val();
-            const now = Date.now();
-            if(data) {
-                for(let id in data) {
-                    if(data[id].lastUpdate && now - data[id].lastUpdate > 30000) {
-                        playersRef.child(id).remove();
-                    }
-                }
-            }
-        });
     }
 
     function startRace() {
@@ -705,10 +601,6 @@
         gameMaze = decorateMazeWithItems(baseMaze);
         currentScreen = 'game'; 
         renderGameScreen(); 
-        if(firebaseReady) { 
-            syncPlayerToFirebase();
-            cleanupOldPlayers();
-        }
     }
 
     function startCountdown() {
@@ -728,46 +620,6 @@
                 }
             }, 1000);
         }, 50);
-    }
-
-    function setupFirebaseListeners() {
-        if (!firebaseReady || !playersRef) return;
-        
-        // Удаляем старых игроков при старте
-        cleanupOldPlayers();
-        
-        // Слушаем других игроков
-        if (playersListener) playersListener.off();
-        playersListener = playersRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if(data) {
-                for(let id in data) {
-                    if(id !== localPlayerId && data[id]) {
-                        if(!players[id]) players[id] = {};
-                        players[id].name = data[id].name;
-                        players[id].avatarUrl = data[id].avatarUrl;
-                        players[id].color = data[id].color;
-                        players[id].emoji = data[id].emoji || '🧙';
-                        players[id].x = data[id].x || 1;
-                        players[id].y = data[id].y || 1;
-                        players[id].score = data[id].score || 0;
-                        players[id].finished = data[id].finished || false;
-                        if(!players[id].avatarImg) {
-                            const newImg = new Image();
-                            newImg.src = data[id].avatarUrl;
-                            players[id].avatarImg = newImg;
-                        }
-                    }
-                }
-                refreshUI();
-            }
-        });
-        
-        if (finishListener) finishListener.off();
-        finishListener = roomRef.child('finishOrder').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if(data) finishOrder = data;
-        });
     }
 
     function renderGameScreen() {
@@ -813,7 +665,6 @@
         document.getElementById('toAvatar')?.addEventListener('click', () => {
             const name = document.getElementById('playerName').value.trim();
             if(!name) return alert("Введите имя!");
-            localPlayerId = "player_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6);
             const img = new Image(); 
             img.src = AVATAR_LIST[0].imageUrl;
             players[localPlayerId] = { 
@@ -844,7 +695,7 @@
                         <div class="avatar-option ${idx===0?'selected':''}" data-url="${a.imageUrl}" data-color="${a.color}" data-emoji="${a.emoji}" data-name="${a.name}">
                             <img src="${a.imageUrl}">
                             <span>${a.emoji}</span>
-                            <div style="font-size:0.7rem;">${a.name}</div>
+                            <div>${a.name}</div>
                         </div>
                     `).join('')}
                 </div>
@@ -869,16 +720,10 @@
             players[localPlayerId].avatarUrl = selected.imageUrl; 
             players[localPlayerId].color = selected.color;
             players[localPlayerId].emoji = selected.emoji;
+            players[localPlayerId].name = selected.name;
             const img = new Image(); 
             img.src = selected.imageUrl; 
             players[localPlayerId].avatarImg = img;
-            
-            if(firebaseReady && db) {
-                roomRef = db.ref(`rooms/${ROOM_ID}`);
-                playersRef = roomRef.child('players');
-                syncPlayerToFirebase();
-                setupFirebaseListeners();
-            }
             startCountdown();
         });
     }
