@@ -3,11 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ИВГУ Лабиринт — Панель организатора</title>
-    
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    
+    <title>ИВГУ Лабиринт — Таблица рейтинга</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -17,8 +13,15 @@
             font-family: 'Segoe UI', 'Poppins', sans-serif;
             padding: 20px;
         }
-        .dashboard { max-width: 1200px; margin: 0 auto; }
-        h1 { text-align: center; color: #ffd700; text-shadow: 0 0 10px #ff8c00; }
+        .dashboard {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #ffd700;
+            text-shadow: 0 0 10px #ff8c00;
+        }
         .qr-section {
             text-align: center;
             background: rgba(255,255,255,0.1);
@@ -30,46 +33,50 @@
         .qr-code img { width: 180px; height: 180px; display: block; }
         .game-link { color: #ffaa44; word-break: break-all; font-size: 1rem; margin-top: 15px; background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 30px; display: inline-block; }
         button { background: #ff5722; border: none; padding: 8px 20px; border-radius: 30px; color: white; cursor: pointer; margin-top: 10px; margin-left: 10px; }
-        .players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .player-card {
-            background: rgba(30,30,50,0.8);
-            backdrop-filter: blur(10px);
-            border-radius: 30px;
-            padding: 15px;
-            border: 1px solid rgba(255,180,70,0.5);
-            transition: 0.2s;
+        .leaderboard-panel {
+            background: rgba(0,0,0,0.6);
+            border-radius: 40px;
+            padding: 20px;
+            margin-top: 20px;
         }
-        .player-card.finished { border-color: #4caf50; background: rgba(40,60,40,0.8); }
-        .player-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-        .player-avatar { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid gold; }
-        .player-name { font-size: 1.2rem; font-weight: bold; color: white; }
-        .player-stats { display: flex; justify-content: space-between; margin-top: 8px; color: #ddd; }
-        .score { color: #ffd700; font-size: 1.2rem; font-weight: bold; }
-        .status.finished { color: #4caf50; }
-        .status.playing { color: #ff9800; }
-        .leaderboard-panel { background: rgba(0,0,0,0.6); border-radius: 40px; padding: 20px; margin-top: 20px; }
-        .leaderboard-panel h2 { color: gold; margin-top: 0; }
-        .leaderboard-list { list-style: none; padding: 0; }
+        .leaderboard-panel h2 { color: gold; margin-top: 0; text-align: center; }
+        .leaderboard-list {
+            list-style: none;
+            padding: 0;
+        }
         .leaderboard-list li {
             background: rgba(255,255,255,0.1);
             margin: 8px 0;
-            padding: 10px 15px;
+            padding: 12px 18px;
             border-radius: 30px;
             display: flex;
             align-items: center;
             gap: 12px;
             color: white;
+            font-size: 1.1rem;
         }
         .rank-1 { background: linear-gradient(90deg, #ffd700, #ffaa00); color: #1a1a2a; }
         .rank-2 { background: linear-gradient(90deg, #c0c0c0, #a0a0a0); }
         .rank-3 { background: linear-gradient(90deg, #cd7f32, #b8692a); }
-        .waiting { animation: pulse 1.5s infinite; color: #ffaa44; text-align: center; padding: 40px; font-size: 1.2rem; }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-        .online-badge { background: #4caf50; border-radius: 20px; padding: 2px 10px; font-size: 0.7rem; margin-left: 10px; }
-        .footer-note { text-align: center; margin-top: 30px; color: rgba(255,255,255,0.5); font-size: 0.8rem; }
-        .connection-status { text-align: center; margin-bottom: 15px; padding: 5px; border-radius: 20px; font-size: 0.8rem; }
-        .connected { background: rgba(76,175,80,0.3); color: #4caf50; }
-        .player-emoji { font-size: 1.5rem; margin-right: 5px; }
+        .empty-list {
+            text-align: center;
+            padding: 30px;
+            color: #aaa;
+            font-size: 1.2rem;
+        }
+        .footer-note {
+            text-align: center;
+            margin-top: 30px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.8rem;
+        }
+        .refresh-btn { background: #2196f3; }
+        .auto-refresh {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.7rem;
+            color: #4caf50;
+        }
     </style>
 </head>
 <body>
@@ -83,107 +90,122 @@
         </div>
         <div class="game-link" id="gameLink">🔗 https://marikalin19.github.io/game/</div>
         <button id="copyLinkBtn">📋 Копировать ссылку</button>
+        <button id="refreshBtn" class="refresh-btn">🔄 Обновить рейтинг</button>
     </div>
-    
-    <div id="connectionStatus" class="connection-status">🔄 Подключение к Firebase...</div>
-    
-    <h2>👥 ИГРОКИ ОНЛАЙН <span id="playersCount" class="online-badge">0</span></h2>
-    <div class="players-grid" id="playersGrid"><div class="waiting">⏳ Ожидание подключения игроков...</div></div>
     
     <div class="leaderboard-panel">
-        <h2>📊 ТАБЛИЦА ЛИДЕРОВ (ФИНИШ)</h2>
-        <ul class="leaderboard-list" id="leaderboardList"><li>Нет финишировавших</li></ul>
+        <h2>📊 ТАБЛИЦА РЕЙТИНГА</h2>
+        <div id="leaderboardContainer">
+            <div class="empty-list">Загрузка...</div>
+        </div>
+        <div class="auto-refresh" id="autoRefreshStatus">🔄 Обновляется автоматически каждые 3 секунды</div>
     </div>
-    <div class="footer-note">🔄 Данные обновляются автоматически в реальном времени</div>
+    <div class="footer-note">
+        📌 Результаты сохраняются автоматически после каждого финиша
+    </div>
 </div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyBiyUPr5amhTM8mZQ7S7Jvfvvf3KBqaTz8",
-        authDomain: "game-f045d.firebaseapp.com",
-        databaseURL: "https://game-f045d-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "game-f045d",
-        storageBucket: "game-f045d.firebasestorage.app",
-        messagingSenderId: "159790344496",
-        appId: "1:159790344496:web:307d3ebeae6da4596b00f5"
-    };
+    const GAME_URL = "https://marikalin19.github.io/game/";
+    const STORAGE_KEY = "maze_leaderboard";
     
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const ROOM_ID = "ivgu_maze_2025";
-    const playersRef = db.ref(`rooms/${ROOM_ID}/players`);
-    const finishOrderRef = db.ref(`rooms/${ROOM_ID}/finishOrder`);
+    function escapeHtml(str) { 
+        if(!str) return '';
+        return String(str).replace(/[&<>]/g, function(m) { 
+            if(m === '&') return '&amp;'; 
+            if(m === '<') return '&lt;'; 
+            if(m === '>') return '&gt;'; 
+            return m; 
+        }); 
+    }
     
-    document.getElementById('connectionStatus').innerHTML = '✅ Подключено к Firebase';
-    document.getElementById('connectionStatus').className = 'connection-status connected';
+    function loadLeaderboard() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        let finishOrder = [];
+        if(saved) {
+            try {
+                finishOrder = JSON.parse(saved);
+            } catch(e) {
+                console.warn("Ошибка парсинга", e);
+            }
+        }
+        renderLeaderboard(finishOrder);
+        return finishOrder;
+    }
     
-    function escapeHtml(str) { if(!str) return ''; return String(str).replace(/[&<>]/g, function(m) { if(m === '&') return '&amp;'; if(m === '<') return '&lt;'; if(m === '>') return '&gt;'; return m; }); }
+    function renderLeaderboard(finishOrder) {
+        const container = document.getElementById('leaderboardContainer');
+        
+        if(!finishOrder || finishOrder.length === 0) {
+            container.innerHTML = '<div class="empty-list">🏁 Пока нет результатов. Пройдите лабиринт до конца!</div>';
+            return;
+        }
+        
+        const sorted = [...finishOrder].sort((a,b) => a.position - b.position);
+        
+        container.innerHTML = `
+            <ul class="leaderboard-list">
+                ${sorted.map(p => `
+                    <li class="${p.position === 1 ? 'rank-1' : p.position === 2 ? 'rank-2' : p.position === 3 ? 'rank-3' : ''}">
+                        <span style="font-size:1.4rem; min-width: 50px;">
+                            ${p.position === 1 ? '🥇' : p.position === 2 ? '🥈' : p.position === 3 ? '🥉' : `${p.position}.`}
+                        </span>
+                        <span style="font-size:1.2rem;">${p.emoji || '🧙'}</span>
+                        <span style="flex:1;"><strong>${escapeHtml(p.name)}</strong></span>
+                        <span>⭐ ${p.score || 0}</span>
+                        <span>⏱️ ${((p.time || 0)/1000).toFixed(1)}с</span>
+                    </li>
+                `).join('')}
+            </ul>
+        `;
+    }
     
-    // Автоматическое удаление старых игроков
-    setInterval(() => {
-        playersRef.once('value', (snapshot) => {
-            const data = snapshot.val();
-            const now = Date.now();
-            if(data) {
-                for(let id in data) {
-                    if(data[id].lastUpdate && now - data[id].lastUpdate > 30000) {
-                        playersRef.child(id).remove();
-                    }
-                }
+    function refreshAndDisplay() {
+        const order = loadLeaderboard();
+        const timestamp = new Date().toLocaleTimeString();
+        console.log(`[${timestamp}] Рейтинг обновлён, записей: ${order.length}`);
+    }
+    
+    function init() {
+        document.getElementById('gameLink').innerHTML = `🔗 ${GAME_URL}`;
+        document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
+            navigator.clipboard.writeText(GAME_URL);
+            alert('✅ Ссылка скопирована!');
+        });
+        
+        document.getElementById('refreshBtn')?.addEventListener('click', () => {
+            refreshAndDisplay();
+            const statusDiv = document.getElementById('autoRefreshStatus');
+            statusDiv.innerHTML = '🔄 Рейтинг обновлён!';
+            setTimeout(() => {
+                statusDiv.innerHTML = '🔄 Обновляется автоматически каждые 3 секунды';
+            }, 1500);
+        });
+        
+        // Первая загрузка
+        refreshAndDisplay();
+        
+        // Автообновление каждые 3 секунды
+        setInterval(() => {
+            refreshAndDisplay();
+        }, 3000);
+        
+        // Слушаем изменения localStorage (если игра открыта в другой вкладке)
+        window.addEventListener('storage', (e) => {
+            if(e.key === STORAGE_KEY) {
+                console.log("Обнаружено изменение в другой вкладке!");
+                refreshAndDisplay();
             }
         });
-    }, 10000);
-    
-    playersRef.on('value', (snapshot) => {
-        const players = snapshot.val() || {};
-        const playersCount = Object.keys(players).length;
-        document.getElementById('playersCount').textContent = playersCount;
         
-        const playersGrid = document.getElementById('playersGrid');
-        if(playersCount === 0) {
-            playersGrid.innerHTML = '<div class="waiting">👥 Нет активных игроков. Попросите отсканировать QR-код!</div>';
-        } else {
-            playersGrid.innerHTML = Object.values(players).map(p => `
-                <div class="player-card ${p.finished ? 'finished' : ''}">
-                    <div class="player-header">
-                        <img class="player-avatar" src="${p.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/1995/1995572.png'}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1995/1995572.png'">
-                        <div>
-                            <div class="player-name"><span class="player-emoji">${p.emoji || '🧙'}</span> ${escapeHtml(p.name)}</div>
-                            <div style="font-size:0.75rem; opacity:0.7;">${p.finished ? `🏁 Финиш: ${p.finishPosition || '?'} место` : '🎯 В пути'}</div>
-                        </div>
-                    </div>
-                    <div class="player-stats">
-                        <span>⭐ <span class="score">${p.score || 0}</span> очков</span>
-                        <span class="status ${p.finished ? 'finished' : 'playing'}">${p.finished ? '✅ ФИНИШ' : '⏳ в игре'}</span>
-                    </div>
-                    <div style="font-size:0.7rem; opacity:0.6;">📍 Позиция: (${p.x || 1}, ${p.y || 1})</div>
-                </div>
-            `).join('');
+        // Настройка QR-кода
+        const qrImg = document.querySelector('.qr-code img');
+        if(qrImg && qrImg.complete && qrImg.naturalWidth === 0) {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(GAME_URL)}`;
         }
-    });
+    }
     
-    finishOrderRef.on('value', (snapshot) => {
-        const finishOrder = snapshot.val() || [];
-        const leaderboardList = document.getElementById('leaderboardList');
-        if(finishOrder.length === 0) {
-            leaderboardList.innerHTML = '<li>Нет финишировавших</li>';
-        } else {
-            const sorted = [...finishOrder].sort((a,b) => a.position - b.position);
-            leaderboardList.innerHTML = sorted.map(p => `
-                <li class="${p.position === 1 ? 'rank-1' : p.position === 2 ? 'rank-2' : p.position === 3 ? 'rank-3' : ''}">
-                    <span style="font-size:1.2rem;">${p.position === 1 ? '🥇' : p.position === 2 ? '🥈' : p.position === 3 ? '🥉' : `${p.position}.`}</span>
-                    <span><strong>${escapeHtml(p.name)}</strong> ${p.emoji || '🧙'}</span>
-                    <span style="flex:1; text-align:right;">⭐ ${p.score || 0}</span>
-                    <span>⏱️ ${(p.time/1000).toFixed(1)}с</span>
-                </li>
-            `).join('');
-        }
-    });
-    
-    document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
-        navigator.clipboard.writeText('https://marikalin19.github.io/game/');
-        alert('✅ Ссылка скопирована!');
-    });
+    init();
 </script>
 </body>
 </html>
