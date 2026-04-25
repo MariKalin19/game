@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ИВГУ Мега-Лабиринт — Цифровая экономика</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    
     <style>
         * {
             box-sizing: border-box;
@@ -156,11 +161,12 @@
             max-height: 400px;
             overflow-y: auto;
         }
-        .leaderboard ol { 
-            margin: 0; 
-            padding-left: 20px;
+        .leaderboard ol, .leaderboard-list {
+            margin: 0;
+            padding-left: 0;
+            list-style: none;
         }
-        .leaderboard li {
+        .leaderboard li, .leaderboard-list li {
             margin: 8px 0;
             padding: 8px 15px;
             border-radius: 40px;
@@ -171,19 +177,16 @@
             color: #ffffff !important;
             background: linear-gradient(90deg, #3a3a4a, #2a2a3a);
         }
-        .leaderboard li.rank-1 { 
+        .leaderboard li.rank-1, .leaderboard-list li.rank-1 { 
             background: linear-gradient(90deg, #ffd700, #ffaa00); 
             color: #ffffff !important;
         }
-        .leaderboard li.rank-2 { 
+        .leaderboard li.rank-2, .leaderboard-list li.rank-2 { 
             background: linear-gradient(90deg, #c0c0c0, #a0a0a0); 
             color: #ffffff !important;
         }
-        .leaderboard li.rank-3 { 
+        .leaderboard li.rank-3, .leaderboard-list li.rank-3 { 
             background: linear-gradient(90deg, #cd7f32, #b8692a); 
-            color: #ffffff !important;
-        }
-        .leaderboard li * {
             color: #ffffff !important;
         }
 
@@ -271,13 +274,27 @@
             text-decoration: none;
         }
         
-        .back-to-game-btn {
-            background: linear-gradient(135deg, #4caf50, #2e7d32);
-            box-shadow: 0 4px 0 #1b5e20;
+        .sync-status {
+            font-size: 0.65rem;
+            color: #aaffaa;
+            background: rgba(0,0,0,0.5);
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 30px;
+            margin-top: 8px;
         }
-        .back-to-game-btn:active {
-            transform: translateY(2px);
-            box-shadow: 0 2px 0 #1b5e20;
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: white;
+        }
+        
+        .online-count {
+            background: #27ae60;
+            padding: 2px 10px;
+            border-radius: 30px;
+            font-size: 0.7rem;
         }
     </style>
 </head>
@@ -285,13 +302,25 @@
 <div id="app"></div>
 
 <script>
-    // ========== НАСТРОЙКИ ИГРЫ ==========
+    // ==================== КОНФИГУРАЦИЯ FIREBASE ====================
+    // ⚠️ ЗАМЕНИТЕ НА ВАШИ ДАННЫЕ ИЗ ПРОЕКТА FIREBASE ⚠️
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+        projectId: "YOUR_PROJECT",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+    
+    // Инициализация Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    
+    // ==================== НАСТРОЙКИ ИГРЫ ====================
     const MAZE_SIZE = 20;
     const CELL_SIZE = 32;
-    
-    // Ключи для localStorage (ДОЛЖНЫ СОВПАДАТЬ С DASHBOARD)
-    const STORAGE_KEY_LEADERBOARD = "maze_leaderboard";
-    const STORAGE_KEY_PLAYERS = "maze_players";
 
     const AVATAR_LIST = [
         { id: 1, imageUrl: "https://cdn-icons-png.flaticon.com/512/4472/4472533.png", color: "#8B5CF6", emoji: "🧙" },
@@ -302,7 +331,6 @@
         { id: 6, imageUrl: "https://cdn-icons-png.flaticon.com/512/4472/4472525.png", color: "#3B82F6", emoji: "🛡️" }
     ];
 
-    // Банк вопросов
     const questionsBank = [
         { text: "💾 Что из перечисленного является оперативной памятью?", options: ["Жесткий диск", "SSD-накопитель", "RAM", "Процессор"], correct: 2 },
         { text: "🔢 Сколько бит в одном байте?", options: ["2", "8", "16", "1024"], correct: 1 },
@@ -319,6 +347,9 @@
     ];
     
     let playerUsedQuestions = {};
+    let globalLeaderboard = [];
+    let activePlayersRef = null;
+    let leaderboardRef = null;
     
     function getRandomQuestionForPlayer(playerId) {
         if (!playerUsedQuestions[playerId]) playerUsedQuestions[playerId] = [];
@@ -327,11 +358,9 @@
         
         if (availableQuestions.length === 0) {
             playerUsedQuestions[playerId] = [];
-            const freshAvailable = questionsBank;
-            const randomIndex = Math.floor(Math.random() * freshAvailable.length);
-            const selectedQuestion = { ...freshAvailable[randomIndex], id: Date.now() + Math.random() };
+            const randomIndex = Math.floor(Math.random() * questionsBank.length);
             playerUsedQuestions[playerId].push(randomIndex);
-            return selectedQuestion;
+            return { ...questionsBank[randomIndex], id: Date.now() + Math.random() };
         }
         
         const randomQuestionIndex = Math.floor(Math.random() * availableQuestions.length);
@@ -405,75 +434,97 @@
     let localPlayerId = null;
     let gameActive = false;
     let raceStartTime = 0;
-    let finishOrder = [];
     let currentScreen = 'welcome';
     let appDiv;
     let gameStateBeforeRating = null;
+    let isFinishedSaved = false;
 
-    // ========== ФУНКЦИИ СОХРАНЕНИЯ В localStorage ==========
-    function savePlayerToLocalStorage(player) {
-        if (!player || !player.id) return;
-        let allPlayers = {};
-        const raw = localStorage.getItem(STORAGE_KEY_PLAYERS);
-        if (raw) {
-            try {
-                allPlayers = JSON.parse(raw);
-            } catch(e) {}
-        }
-        allPlayers[player.id] = {
-            id: player.id,
-            name: player.name,
-            avatarUrl: player.avatarUrl,
-            emoji: player.emoji,
-            color: player.color,
-            score: player.score,
-            finished: player.finished || false,
-            finishPosition: player.finishPosition || null,
-            finishTime: player.finishTime || null,
-            x: player.x || 1,
-            y: player.y || 1,
-            lastUpdate: Date.now()
-        };
-        localStorage.setItem(STORAGE_KEY_PLAYERS, JSON.stringify(allPlayers));
+    // ========== FIREBASE: РЕЙТИНГ В РЕАЛЬНОМ ВРЕМЕНИ ==========
+    function initFirebaseListeners() {
+        // Слушаем изменения в рейтинге
+        leaderboardRef = database.ref('leaderboard');
+        leaderboardRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                globalLeaderboard = Object.values(data);
+                // Сортируем по времени финиша
+                globalLeaderboard.sort((a, b) => (a.finishTimestamp || 0) - (b.finishTimestamp || 0));
+                // Добавляем позиции
+                for (let i = 0; i < globalLeaderboard.length; i++) {
+                    globalLeaderboard[i].position = i + 1;
+                }
+            } else {
+                globalLeaderboard = [];
+            }
+            // Если сейчас на экране рейтинга - обновляем
+            if (currentScreen === 'leaderboard' || currentScreen === 'ratingOnly') {
+                renderLeaderboardScreen();
+            }
+        });
+        
+        // Слушаем активных игроков (для отображения в панели организатора)
+        activePlayersRef = database.ref('activePlayers');
+        // Просто слушаем, чтобы поддерживать актуальность
+        activePlayersRef.on('value', () => {});
     }
     
-    function saveLeaderboardToLocalStorage() {
-        // Сортируем по времени финиша
-        const sorted = [...finishOrder].sort((a,b) => (a.finishTimestamp || 0) - (b.finishTimestamp || 0));
-        for (let i = 0; i < sorted.length; i++) {
-            sorted[i].position = i + 1;
-        }
-        localStorage.setItem(STORAGE_KEY_LEADERBOARD, JSON.stringify(sorted));
-    }
-    
-    function addToLeaderboard(player) {
-        if (!player || !player.id || !player.finished) return false;
+    async function saveFinishToFirebase(player) {
+        if (!player || !player.finished || isFinishedSaved) return false;
         
-        // Проверяем, есть ли уже в рейтинге
-        const exists = finishOrder.some(entry => entry.id === player.id);
-        if (exists) return false;
-        
-        const newEntry = {
+        const finishData = {
             id: player.id,
             name: player.name,
             score: player.score,
             time: player.finishTime,
             emoji: player.emoji,
-            finishTimestamp: player.finishTimestamp || Date.now(),
-            position: finishOrder.length + 1
+            finishTimestamp: Date.now(),
+            avatarUrl: player.avatarUrl
         };
-        finishOrder.push(newEntry);
-        saveLeaderboardToLocalStorage();
-        return true;
+        
+        try {
+            await database.ref('leaderboard/' + player.id).set(finishData);
+            isFinishedSaved = true;
+            return true;
+        } catch(e) {
+            console.warn("Ошибка сохранения в Firebase:", e);
+            return false;
+        }
     }
     
-    function loadLeaderboardFromStorage() {
-        const raw = localStorage.getItem(STORAGE_KEY_LEADERBOARD);
-        if (raw) {
-            try {
-                finishOrder = JSON.parse(raw);
-                if (!Array.isArray(finishOrder)) finishOrder = [];
-            } catch(e) { finishOrder = []; }
+    async function updateActivePlayer(player, isActive = true) {
+        if (!player || !player.id) return;
+        const activeData = {
+            id: player.id,
+            name: player.name,
+            emoji: player.emoji,
+            score: player.score,
+            finished: player.finished || false,
+            lastSeen: Date.now(),
+            avatarUrl: player.avatarUrl
+        };
+        
+        if (isActive) {
+            await database.ref('activePlayers/' + player.id).set(activeData);
+        } else {
+            await database.ref('activePlayers/' + player.id).remove();
+        }
+    }
+    
+    // Периодическое обновление статуса "активен"
+    let heartbeatInterval = null;
+    function startHeartbeat(player) {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        heartbeatInterval = setInterval(async () => {
+            if (player && !player.finished) {
+                await updateActivePlayer(player, true);
+            }
+        }, 15000); // каждые 15 секунд
+    }
+    
+    function stopHeartbeat() {
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            heartbeatInterval = null;
         }
     }
 
@@ -575,18 +626,12 @@
             ctx.font = "18px sans-serif";
             ctx.fillStyle = "white";
             ctx.fillText(localP.emoji || "🧙", localP.x * CELL_SIZE + 8, localP.y * CELL_SIZE + 20);
-            ctx.font = "bold 14px 'Segoe UI', 'Poppins', sans-serif";
-            ctx.shadowColor = "rgba(0,0,0,0.7)";
-            ctx.shadowBlur = 2;
+            ctx.font = "bold 14px 'Segoe UI'";
             ctx.fillStyle = "#FFFFFF";
+            ctx.shadowColor = "rgba(0,0,0,0.7)";
             const nameText = localP.name.length > 12 ? localP.name.slice(0,10)+".." : localP.name;
-            const textWidth = ctx.measureText(nameText).width;
-            ctx.fillText(nameText, centerX - textWidth/2, localP.y * CELL_SIZE - 4);
-            ctx.fillStyle = "#FFD700";
-            ctx.font = "12px sans-serif";
-            ctx.fillText("▼", centerX - 4, localP.y * CELL_SIZE - 6);
+            ctx.fillText(nameText, centerX - 25, localP.y * CELL_SIZE - 4);
             ctx.shadowBlur = 0;
-            ctx.shadowColor = "transparent";
         }
     }
 
@@ -610,7 +655,7 @@
                     if(gameMaze[player.y][player.x] === 3) gameMaze[player.y][player.x] = 0;
                     document.body.removeChild(modal); 
                     createEffect(player.x, player.y, "+5", "#2ecc71");
-                    savePlayerToLocalStorage(player);
+                    updateActivePlayer(player, true);
                     refreshUI(); 
                 } else {
                     const fb = card.querySelector('#qFeedback');
@@ -622,7 +667,7 @@
         });
     }
 
-    function tryMove(dx, dy) {
+    async function tryMove(dx, dy) {
         const p = players[localPlayerId];
         if(!p || p.finished || !gameActive) return false;
         if(p.hasPendingQuestion) return false;
@@ -638,26 +683,26 @@
             p.score += 10; 
             gameMaze[newY][newX] = 0; 
             createEffect(newX, newY, "+10⭐", "gold");
-            savePlayerToLocalStorage(p);
+            await updateActivePlayer(p, true);
         }
         else if(cell === 3) { 
             p.hasPendingQuestion = true; 
             const uniqueQuestion = getRandomQuestionForPlayer(localPlayerId);
             showQuestionModal(p, uniqueQuestion); 
         }
-        else if(cell === 4 && !p.finished) {
+        else if(cell === 4 && !p.finished && !isFinishedSaved) {
             p.finished = true; 
             p.finishTime = Date.now() - raceStartTime;
-            p.finishTimestamp = Date.now();
-            p.finishPosition = finishOrder.length + 1;
-            
-            // Сохраняем в рейтинг
-            addToLeaderboard(p);
-            savePlayerToLocalStorage(p);
             
             createEffect(newX, newY, "🏆 ФИНИШ!", "#ffd700");
             refreshUI(); 
             gameActive = false;
+            
+            // Сохраняем в Firebase
+            await saveFinishToFirebase(p);
+            await updateActivePlayer(p, false);
+            stopHeartbeat();
+            
             setTimeout(() => {
                 showGlobalLeaderboard();
             }, 600);
@@ -665,13 +710,12 @@
         else if(cell === 5) { 
             p.frozenUntil = Date.now() + 1500; 
             createEffect(newX, newY, "❄️ ЗАМОРОЗКА", "#88ccff");
-            savePlayerToLocalStorage(p);
+            await updateActivePlayer(p, true);
         }
         else if(cell === 6) { 
             createEffect(newX, newY, "⚡ УСКОРЕНИЕ", "#44ff44"); 
             gameMaze[newY][newX] = 0; 
         }
-        savePlayerToLocalStorage(p);
         refreshUI(); 
         return true;
     }
@@ -716,86 +760,52 @@
         gameActive = false;
         gameStateBeforeRating = null;
         players = {};
+        if (localPlayerId) {
+            updateActivePlayer({ id: localPlayerId }, false);
+        }
         localPlayerId = null;
+        isFinishedSaved = false;
         currentScreen = 'welcome';
         renderWelcomeScreen();
     }
 
-    function showRatingOnly() {
-        saveGameState();
-        loadLeaderboardFromStorage();
-        const sorted = [...finishOrder].sort((a,b) => (a.position || 999) - (b.position || 999));
-        const hasActiveGame = gameStateBeforeRating !== null && gameStateBeforeRating.gameActive === true;
-        
+    function renderLeaderboardScreen() {
+        const sorted = [...globalLeaderboard];
         appDiv.innerHTML = `
             <div class="screen">
-                <h2 style="color:#ffd700;">🏆 ТАБЛИЦА РЕЙТИНГА 🏆</h2>
+                <h2 style="color:#ffd700;">🏆 ОБЩИЙ РЕЙТИНГ 🏆</h2>
                 <div class="leaderboard">
-                    <ol>
+                    <ul class="leaderboard-list">
                         ${sorted.length > 0 ? sorted.map(p => `
                             <li class="${p.position === 1 ? 'rank-1' : p.position === 2 ? 'rank-2' : p.position === 3 ? 'rank-3' : ''}">
-                                <strong>${p.position}. место</strong> 
-                                <span>${p.emoji || '🧙'} ${p.name}</span>
+                                <strong style="min-width: 50px;">${p.position}. место</strong> 
+                                <span style="font-size:1.3rem;">${p.emoji || '🧙'}</span>
+                                <span style="flex:1;"><strong>${p.name}</strong></span>
                                 <span style="color: #ffd700;">⭐ ${p.score} очков</span>
                                 <span>⏱️ ${(p.time/1000).toFixed(1)}с</span>
                             </li>
                         `).join('') : '<li style="justify-content:center;">Пока нет результатов</li>'}
-                    </ol>
+                    </ul>
                 </div>
                 <div style="display:flex; gap:15px; justify-content:center; flex-wrap:wrap;">
-                    ${hasActiveGame ? `<button id="resumeGameBtn" class="back-to-game-btn">🎮 Вернуться в игру</button>` : ''}
                     <button id="restartFromRatingBtn">🔄 Новая игра</button>
                     <button id="menuFromRatingBtn">🏠 Главное меню</button>
                 </div>
+                <div class="sync-status">🌐 Рейтинг в реальном времени (Firebase)</div>
             </div>
         `;
         
-        if (hasActiveGame) {
-            document.getElementById('resumeGameBtn')?.addEventListener('click', () => {
-                resumeGame();
-            });
-        }
         document.getElementById('restartFromRatingBtn')?.addEventListener('click', () => {
             resetAndRestart();
         });
         document.getElementById('menuFromRatingBtn')?.addEventListener('click', () => {
             goToMainMenu();
         });
+        currentScreen = 'ratingOnly';
     }
 
     function showGlobalLeaderboard() {
-        loadLeaderboardFromStorage();
-        const sorted = [...finishOrder].sort((a,b) => (a.position || 999) - (b.position || 999));
-        appDiv.innerHTML = `
-            <div class="screen">
-                <h2 style="color:#ffd700;">🏆 ОБЩИЙ РЕЙТИНГ 🏆</h2>
-                <div class="leaderboard">
-                    <ol>
-                        ${sorted.map(p => `
-                            <li class="${p.position === 1 ? 'rank-1' : p.position === 2 ? 'rank-2' : p.position === 3 ? 'rank-3' : ''}">
-                                <strong>${p.position}. место</strong> 
-                                <span>${p.emoji || '🧙'} ${p.name}</span>
-                                <span style="color: #ffd700;">⭐ ${p.score} очков</span>
-                                <span>⏱️ ${(p.time/1000).toFixed(1)}с</span>
-                            </li>
-                        `).join('')}
-                    </ol>
-                </div>
-                <div class="rating-link">
-                    📊 <a href="#" id="showRatingLink" style="color:#ffaa44;">Посмотреть таблицу рейтинга</a>
-                </div>
-                <div style="display:flex; gap:15px; justify-content:center; margin-top:10px;">
-                    <button id="restartBtn">🔄 Сыграть снова</button>
-                    <button id="menuBtn">🏠 Главное меню</button>
-                </div>
-            </div>
-        `;
-        document.getElementById('restartBtn')?.addEventListener('click', () => { resetAndRestart(); });
-        document.getElementById('menuBtn')?.addEventListener('click', () => { goToMainMenu(); });
-        document.getElementById('showRatingLink')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            showRatingOnly();
-        });
+        renderLeaderboardScreen();
     }
 
     function resetAndRestart() {
@@ -805,8 +815,8 @@
             const p = players[localPlayerId];
             p.x = 1; p.y = 1; p.score = 0; p.finished = false; 
             p.finishTime = null; p.hasPendingQuestion = false; p.frozenUntil = null;
-            p.finishPosition = null;
-            savePlayerToLocalStorage(p);
+            isFinishedSaved = false;
+            updateActivePlayer(p, true);
         }
         gameMaze = decorateMazeWithItems(baseMaze);
         startCountdown();
@@ -815,6 +825,7 @@
     function startRace() {
         gameActive = true; 
         raceStartTime = Date.now(); 
+        isFinishedSaved = false;
         if (localPlayerId && players[localPlayerId]) {
             players[localPlayerId].x = 1; 
             players[localPlayerId].y = 1; 
@@ -823,8 +834,8 @@
             players[localPlayerId].finishTime = null; 
             players[localPlayerId].hasPendingQuestion = false; 
             players[localPlayerId].frozenUntil = null;
-            players[localPlayerId].finishPosition = null;
-            savePlayerToLocalStorage(players[localPlayerId]);
+            updateActivePlayer(players[localPlayerId], true);
+            startHeartbeat(players[localPlayerId]);
         }
         gameMaze = decorateMazeWithItems(baseMaze);
         currentScreen = 'game'; 
@@ -871,6 +882,7 @@
                 <div class="rating-link">
                     📊 <a href="#" id="ratingLink">Посмотреть таблицу рейтинга</a>
                 </div>
+                <div class="sync-status">🌐 Рейтинг синхронизируется с облаком</div>
                 <p style="color:white; margin-top:8px; text-align:center; font-size:0.7rem;">⭐ монетка +10 | ❓ вопрос +5 | ⚠️ заморозка | ⚡ ускорение</p>
             </div>
         `;
@@ -882,7 +894,8 @@
         });
         document.getElementById('ratingLink')?.addEventListener('click', (e) => {
             e.preventDefault();
-            showRatingOnly();
+            saveGameState();
+            renderLeaderboardScreen();
         });
         refreshUI();
     }
@@ -898,6 +911,7 @@
                 <div class="rating-link">
                     📊 <a href="#" id="ratingLinkWelcome">Посмотреть таблицу рейтинга</a>
                 </div>
+                <div class="sync-status">🌐 Общий рейтинг всех игроков (Firebase)</div>
             </div>
         `;
         document.getElementById('toAvatar')?.addEventListener('click', () => {
@@ -915,19 +929,15 @@
                 score: 0, 
                 finished: false, 
                 finishTime: null, 
-                finishTimestamp: null,
-                finishPosition: null,
                 hasPendingQuestion: false, 
                 frozenUntil: null
             };
-            savePlayerToLocalStorage(players[localPlayerId]);
             currentScreen = 'avatarPick'; 
             renderAvatarScreen();
         });
         document.getElementById('ratingLinkWelcome')?.addEventListener('click', (e) => {
             e.preventDefault();
-            saveGameState();
-            showRatingOnly();
+            renderLeaderboardScreen();
         });
     }
 
@@ -966,20 +976,19 @@
             players[localPlayerId].avatarUrl = selected.imageUrl; 
             players[localPlayerId].color = selected.color;
             players[localPlayerId].emoji = selected.emoji;
-            savePlayerToLocalStorage(players[localPlayerId]);
             startCountdown();
         });
         
         document.getElementById('ratingLinkAvatar')?.addEventListener('click', (e) => {
             e.preventDefault();
-            saveGameState();
-            showRatingOnly();
+            renderLeaderboardScreen();
         });
     }
 
-    function init() {
+    // ========== ИНИЦИАЛИЗАЦИЯ ==========
+    async function init() {
         appDiv = document.getElementById('app');
-        loadLeaderboardFromStorage();
+        initFirebaseListeners();
         renderWelcomeScreen();
     }
     
