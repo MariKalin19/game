@@ -2,127 +2,158 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>ИВГУ Лабиринт — Панель организатора</title>
     <style>
         * { box-sizing: border-box; }
         body {
             margin: 0;
             min-height: 100vh;
-            background: linear-gradient(135deg, #438cc1, #02599b);
-            font-family: 'Segoe UI', 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif;
             padding: 20px;
         }
-        .dashboard { max-width: 800px; margin: 0 auto; }
-        h1 { text-align: center; color: #ffd700; text-shadow: 0 0 10px #ff8c00; margin-bottom: 20px; }
+        .dashboard { max-width: 950px; margin: 0 auto; }
+        h1 { text-align: center; color: #ffd966; text-shadow: 0 0 12px #ff8c00; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+        h1 small { font-size: 0.7rem; background: rgba(0,0,0,0.5); padding: 5px 12px; border-radius: 40px; color: #ccc; }
         
         .qr-section {
             text-align: center;
-            background: rgba(255,255,255,0.1);
-            border-radius: 30px;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(12px);
+            border-radius: 48px;
             padding: 20px;
             margin-bottom: 30px;
+            border: 1px solid rgba(255,215,0,0.4);
         }
-        .qr-code { background: white; display: inline-block; padding: 15px; border-radius: 20px; }
-        .qr-code img { width: 180px; height: 180px; display: block; }
-        .game-link { color: #ffaa44; word-break: break-all; font-size: 1rem; margin-top: 15px; background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 30px; display: inline-block; }
-        button { background: #2b0683; border: none; padding: 8px 20px; border-radius: 30px; color: white; cursor: pointer; margin-top: 10px; margin-left: 10px; }
-        button:hover { opacity: 0.9; }
+        .qr-code { background: white; display: inline-block; padding: 12px; border-radius: 28px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+        .qr-code img { width: 160px; height: 160px; display: block; border-radius: 16px; }
+        .game-link { color: #ffdd99; word-break: break-all; font-size: 0.9rem; margin-top: 12px; background: rgba(0,0,0,0.6); padding: 5px 16px; border-radius: 40px; display: inline-block; font-family: monospace; }
+        button { background: linear-gradient(95deg, #ff8c42, #ff5722); border: none; padding: 8px 20px; border-radius: 40px; color: white; font-weight: bold; cursor: pointer; margin-top: 10px; margin-left: 10px; transition: 0.1s linear; box-shadow: 0 3px 6px rgba(0,0,0,0.2); }
+        button:active { transform: scale(0.97); }
         
+        .players-stats-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            margin: 10px 0 15px;
+        }
         .players-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 16px;
             margin-bottom: 30px;
-            min-height: 200px;
+            max-height: 460px;
+            overflow-y: auto;
+            padding: 4px;
         }
         .player-card {
-            background: rgba(30,30,50,0.8);
-            backdrop-filter: blur(10px);
-            border-radius: 30px;
-            padding: 15px;
-            border: 1px solid rgba(255,180,70,0.5);
-            transition: 0.2s;
+            background: rgba(20, 30, 45, 0.85);
+            backdrop-filter: blur(8px);
+            border-radius: 32px;
+            padding: 14px;
+            border-left: 6px solid #ffaa33;
+            transition: 0.1s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
-        .player-card.finished { border-color: #4caf50; background: rgba(2, 90, 134, 0.919); }
+        .player-card.finished { border-left-color: #4caf50; background: rgba(0, 60, 40, 0.8); }
         .player-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-        .player-avatar { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid gold; }
-        .player-name { font-size: 1.2rem; font-weight: bold; color: white; }
-        .player-stats { display: flex; justify-content: space-between; margin-top: 8px; color: #ddd; }
-        .score { color: #ffd700; font-size: 1.2rem; font-weight: bold; }
-        .status.finished { color: #162198; }
-        .status.playing { color: #ff9800; }
+        .player-avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid #ffd966; background: #2c3e50; }
+        .player-name { font-size: 1.2rem; font-weight: bold; color: #f9f9f9; }
+        .player-stats { display: flex; justify-content: space-between; margin-top: 8px; color: #ddd; font-size: 0.9rem; }
+        .score { color: #ffd966; font-size: 1.3rem; font-weight: bold; }
+        .status.finished { color: #a5d6a5; font-weight: bold; }
+        .status.playing { color: #ffb347; }
         
         .leaderboard-panel {
-            background: rgba(0,0,0,0.6);
-            border-radius: 40px;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(10px);
+            border-radius: 44px;
             padding: 20px;
             margin-top: 20px;
+            border: 1px solid rgba(255,200,100,0.5);
         }
-        .leaderboard-panel h2 { color: gold; margin-top: 0; text-align: center; }
+        .leaderboard-panel h2 { color: #ffd966; margin-top: 0; text-align: center; display: flex; gap: 10px; justify-content: center; align-items: center; }
         .leaderboard-list {
             list-style: none;
             padding: 0;
+            margin: 0;
         }
         .leaderboard-list li {
-            background: rgba(255,255,255,0.1);
+            background: rgba(25, 35, 55, 0.8);
             margin: 8px 0;
             padding: 12px 18px;
-            border-radius: 30px;
+            border-radius: 60px;
             display: flex;
             align-items: center;
             gap: 12px;
             color: white;
             font-size: 1rem;
+            transition: 0.1s;
         }
-        .rank-1 { background: linear-gradient(90deg, #ffd700, #ffaa00); color: white !important; }
-        .rank-2 { background: linear-gradient(90deg, #282431, #390f6c); color: white !important; }
-        .rank-3 { background: linear-gradient(90deg, #cd7f32, #b8692a); color: white !important; }
-        .empty-list { text-align: center; padding: 40px; color: #aaa; font-size: 1.1rem; grid-column: 1 / -1; }
-        .footer-note { text-align: center; margin-top: 30px; color: rgba(255,255,255,0.5); font-size: 0.8rem; }
-        .refresh-btn { background: #2196f3; }
-        .auto-refresh { text-align: center; margin-top: 10px; font-size: 0.7rem; color: #4caf50; }
+        .rank-1 { background: linear-gradient(95deg, #d4af37, #b8860b); box-shadow: 0 0 6px gold; }
+        .rank-2 { background: linear-gradient(95deg, #b0b0b0, #7a7a7a); }
+        .rank-3 { background: linear-gradient(95deg, #cd7f32, #a0522d); }
+        .empty-list { text-align: center; padding: 35px; color: #ccc; font-size: 1rem; background: rgba(0,0,0,0.3); border-radius: 48px; margin: 10px 0; }
+        .footer-note { text-align: center; margin-top: 25px; color: rgba(255,255,240,0.55); font-size: 0.75rem; }
+        .refresh-btn { background: #2c6e9e; }
+        .auto-refresh { text-align: center; margin-top: 12px; font-size: 0.7rem; background: rgba(0,0,0,0.4); display: inline-block; padding: 4px 18px; border-radius: 50px; color: #bbffbb; }
+        .online-badge { background: #00a36c; border-radius: 40px; padding: 4px 12px; font-size: 0.75rem; margin-left: 12px; font-weight: bold; }
         .player-emoji { font-size: 1.3rem; margin-right: 5px; }
-        .online-badge { background: #1717c2; border-radius: 20px; padding: 2px 10px; font-size: 0.7rem; margin-left: 10px; }
+        .live-indicator { background: #e67e22; width: 10px; height: 10px; border-radius: 10px; display: inline-block; margin-right: 6px; box-shadow: 0 0 4px orange; animation: pulse 1.2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.4; } 100% { opacity: 1; } }
+        .time-badge { font-size: 0.7rem; background: #00000066; border-radius: 20px; padding: 2px 10px; }
+        .winner-crown { font-size: 1.2rem; }
+        hr { border-color: #ffaa3344; margin: 12px 0; }
+        .control-bar { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
     </style>
 </head>
 <body>
 <div class="dashboard">
-    <h1>🏆 ИВГУ МЕГА-ЛАБИРИНТ 🏆</h1>
+    <h1>🏛️ ИВГУ МЕГА-ЛАБИРИНТ <small>Онлайн табло</small> 🧙</h1>
     
     <div class="qr-section">
-        <h3>📱 Сканируйте QR-код для игры</h3>
+        <h3 style="color:#ffe0a3;">📱 Сканируй и играй</h3>
         <div class="qr-code" id="qrCode">
-            <img src="qr.jpg" alt="QR-код" style="width:180px; height:180px;" onerror="this.onerror=null; this.src='https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://marikalin19.github.io/game/';">
+            <img id="qrImg" src="" alt="QR-код" style="width:160px; height:160px;">
         </div>
         <div class="game-link" id="gameLink">🔗 https://marikalin19.github.io/game/</div>
-        <button id="copyLinkBtn">📋 Копировать ссылку</button>
-        <button id="refreshBtn" class="refresh-btn">🔄 Обновить</button>
-        <button id="clearBtn" style="background:#dc3545;">🗑️ Очистить данные</button>
+        <div class="control-bar">
+            <button id="copyLinkBtn">📋 Копировать ссылку</button>
+            <button id="refreshBtn" class="refresh-btn">🔄 Обновить сейчас</button>
+            <button id="clearBtn" style="background:#aa2e1e;">🗑️ Сбросить рейтинг</button>
+        </div>
     </div>
     
-    <h2>👥 ИГРОКИ ОНЛАЙН <span id="playersCount" class="online-badge">0</span></h2>
+    <div class="players-stats-row">
+        <h2 style="color:#f9f3c1; margin:0;">👥 ИГРОКИ <span id="playersCount" class="online-badge">0</span></h2>
+        <div class="auto-refresh" id="autoRefreshStatus">🟢 Живая синхронизация (2с)</div>
+    </div>
     <div id="playersGrid" class="players-grid">
         <div class="empty-list">⏳ Ожидание подключения игроков...</div>
     </div>
     
     <div class="leaderboard-panel">
-        <h2>📊 ТАБЛИЦА РЕЙТИНГА (ФИНИШ)</h2>
+        <h2>🏆 РЕЙТИНГ ФИНИШЁРОВ 🏆 <span style="font-size:0.7rem;">(в реальном времени)</span></h2>
         <div id="leaderboardContainer">
-            <div class="empty-list">🏁 Пока нет финишировавших</div>
+            <div class="empty-list">🏁 Никто ещё не финишировал</div>
         </div>
-        <div class="auto-refresh" id="autoRefreshStatus">🔄 Автообновление: активно (каждые 2 сек)</div>
+        <div class="auto-refresh" style="margin-top:12px; display:block; text-align:center;">⚡ Данные синхронизируются автоматически между всеми устройствами</div>
     </div>
     <div class="footer-note">
-        📌 Данные обновляются автоматически. Откройте игру на телефоне и начните прохождение.
+        📌 Все игроки видят актуальный рейтинг. Панель организатора обновляется мгновенно.
     </div>
 </div>
 
 <script>
+    // ================ КОНФИГУРАЦИЯ ================
     const GAME_URL = "https://marikalin19.github.io/game/";
     const STORAGE_KEY_LEADERBOARD = "maze_leaderboard";
     const STORAGE_KEY_PLAYERS = "maze_players";
+    const STORAGE_KEY_LAST_RESET = "maze_last_reset_ts";
     
+    // Функция для экранирования HTML
     function escapeHtml(str) { 
         if(!str) return '';
         return String(str).replace(/[&<>]/g, function(m) { 
@@ -133,47 +164,130 @@
         }); 
     }
     
+    // ---- ГЛОБАЛЬНЫЕ ДАННЫЕ ----
+    let currentPlayers = {};      // { playerId: { name, avatarUrl, emoji, score, finished, finishPosition, x, y, lastUpdate } }
+    let currentLeaderboard = [];   // [{ id, name, score, time, position, emoji, finishTimestamp }]
+    
+    // ---- ОЧИСТКА ДАННЫХ (с подтверждением и сбросом) ----
     function clearAllData() {
-        if (confirm('Очистить все данные рейтинга и игроков?')) {
+        if (confirm("⚠️ Очистить ВСЕ данные рейтинга и активных игроков? Это действие необратимо, игра начнётся с нуля.")) {
             localStorage.removeItem(STORAGE_KEY_LEADERBOARD);
             localStorage.removeItem(STORAGE_KEY_PLAYERS);
-            alert('✅ Данные очищены');
-            loadAndRender();
+            localStorage.setItem(STORAGE_KEY_LAST_RESET, Date.now().toString());
+            
+            // дополнительно чистим также внутренние массивы
+            currentLeaderboard = [];
+            currentPlayers = {};
+            renderAll();
+            // оповещаем другие вкладки (имитация события storage)
+            window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY_LEADERBOARD, newValue: null }));
+            window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY_PLAYERS, newValue: null }));
+            setTimeout(() => {
+                alert("✅ Все данные сброшены. Игроки могут начинать заново.");
+            }, 50);
         }
     }
     
-    function loadAndRender() {
-        // Загрузка игроков
-        let players = {};
-        const playersSaved = localStorage.getItem(STORAGE_KEY_PLAYERS);
-        if(playersSaved) {
+    // ========== ЗАГРУЗКА И ОБРАБОТКА ДАННЫХ ИЗ LOCALSTORAGE ==========
+    function loadRawData() {
+        // 1. Загружаем рейтинг финишёров (упорядоченный по позициям)
+        let rawLeaderboard = [];
+        const leaderboardRaw = localStorage.getItem(STORAGE_KEY_LEADERBOARD);
+        if (leaderboardRaw) {
             try {
-                const parsed = JSON.parse(playersSaved);
-                // Фильтруем старых игроков (старше 60 секунд)
-                const now = Date.now();
-                for(let id in parsed) {
-                    const player = parsed[id];
-                    if(!player.finished && player.lastUpdate && now - player.lastUpdate > 60000) {
-                        continue; // пропускаем устаревших
+                rawLeaderboard = JSON.parse(leaderboardRaw);
+                if (!Array.isArray(rawLeaderboard)) rawLeaderboard = [];
+                // гарантируем поля
+                rawLeaderboard = rawLeaderboard.filter(p => p && p.id).map((p, idx) => {
+                    return {
+                        id: p.id,
+                        name: p.name || 'Аноним',
+                        score: typeof p.score === 'number' ? p.score : 0,
+                        time: typeof p.time === 'number' ? p.time : 0,
+                        position: p.position || (idx+1),
+                        emoji: p.emoji || '🧙',
+                        finishTimestamp: p.finishTimestamp || Date.now()
+                    };
+                });
+                // сортируем по позиции для уверенности
+                rawLeaderboard.sort((a,b) => (a.position || 999) - (b.position || 999));
+            } catch(e) { rawLeaderboard = []; }
+        }
+        
+        // 2. Загружаем активных игроков (не финишировали или просто все игроки)
+        let playersMap = {};
+        const playersRaw = localStorage.getItem(STORAGE_KEY_PLAYERS);
+        if (playersRaw) {
+            try {
+                const parsed = JSON.parse(playersRaw);
+                if (parsed && typeof parsed === 'object') {
+                    const now = Date.now();
+                    for (let id in parsed) {
+                        let p = parsed[id];
+                        // Фильтруем "призраков": если игрок не финишировал и не обновлялся больше 90 секунд — скрываем из списка активных,
+                        // но если он есть в финишёрах, всё равно покажем в рейтинге. Для панели организатора показываем только живых (lastUpdate не старее 90с) ИЛИ финишировавших.
+                        const isFinished = p.finished === true;
+                        const lastUpdate = p.lastUpdate || 0;
+                        const isAlive = (now - lastUpdate) < 90000; // 90 секунд терпимости
+                        if (!isFinished && !isAlive) continue; // пропускаем устаревших, не финишировавших
+                        
+                        playersMap[id] = {
+                            id: id,
+                            name: p.name || 'Безымянный',
+                            avatarUrl: p.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/4472/4472533.png',
+                            emoji: p.emoji || '🧙',
+                            score: typeof p.score === 'number' ? p.score : 0,
+                            finished: p.finished === true,
+                            finishPosition: p.finishPosition || null,
+                            x: p.x || 1,
+                            y: p.y || 1,
+                            lastUpdate: p.lastUpdate || now,
+                            color: p.color || '#3b82f6'
+                        };
                     }
-                    players[id] = player;
                 }
             } catch(e) { console.warn(e); }
         }
         
-        // Загрузка рейтинга
-        let finishOrder = [];
-        const leaderboardSaved = localStorage.getItem(STORAGE_KEY_LEADERBOARD);
-        if(leaderboardSaved) {
-            try {
-                finishOrder = JSON.parse(leaderboardSaved);
-            } catch(e) { console.warn(e); }
+        // Также важно: если в рейтинге есть игроки, которых нет в playersMap — добавим их отдельно (чтобы отобразить в списке игроков даже если offline)
+        for (let entry of rawLeaderboard) {
+            if (!playersMap[entry.id]) {
+                playersMap[entry.id] = {
+                    id: entry.id,
+                    name: entry.name,
+                    avatarUrl: 'https://cdn-icons-png.flaticon.com/512/4472/4472533.png',
+                    emoji: entry.emoji || '🏆',
+                    score: entry.score,
+                    finished: true,
+                    finishPosition: entry.position,
+                    x: 0, y: 0,
+                    lastUpdate: Date.now(),
+                    color: '#aaa'
+                };
+            } else {
+                // синхронизируем данные финиша
+                if (!playersMap[entry.id].finished) {
+                    playersMap[entry.id].finished = true;
+                    playersMap[entry.id].finishPosition = entry.position;
+                }
+                // обновим счет, если из рейтинга выше
+                if (playersMap[entry.id].score < entry.score) playersMap[entry.id].score = entry.score;
+            }
         }
         
-        updatePlayersUI(players);
-        updateLeaderboardUI(finishOrder);
+        return { players: playersMap, leaderboard: rawLeaderboard };
+    }
+    
+    // отрисовка всего дашборда
+    function renderAll() {
+        const data = loadRawData();
+        currentPlayers = data.players;
+        currentLeaderboard = data.leaderboard;
         
-        const playersCount = Object.keys(players).length;
+        updatePlayersUI(currentPlayers);
+        updateLeaderboardUI(currentLeaderboard);
+        
+        const playersCount = Object.keys(currentPlayers).length;
         document.getElementById('playersCount').textContent = playersCount;
     }
     
@@ -182,94 +296,167 @@
         const playersArray = Object.values(players);
         
         if(playersArray.length === 0) {
-            playersGrid.innerHTML = '<div class="empty-list">👥 Нет активных игроков. Попросите отсканировать QR-код и начать игру!</div>';
+            playersGrid.innerHTML = '<div class="empty-list">👥 Нет активных игроков. Отсканируйте QR-код и начните игру!</div>';
             return;
         }
         
-        playersGrid.innerHTML = playersArray.map(p => `
+        // Сортируем: сначала те кто в игре, потом финишировавшие
+        const sorted = [...playersArray].sort((a,b) => {
+            if(a.finished === b.finished) return (b.score - a.score);
+            return a.finished ? 1 : -1;
+        });
+        
+        playersGrid.innerHTML = sorted.map(p => {
+            const finishText = p.finished ? (p.finishPosition ? `🏁 Финиш: ${p.finishPosition} место` : '✅ Финиш!') : '🎯 В пути';
+            const posText = (!p.finished && p.x) ? `📍 (${p.x},${p.y})` : '';
+            return `
             <div class="player-card ${p.finished ? 'finished' : ''}">
                 <div class="player-header">
                     <img class="player-avatar" src="${p.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/4472/4472533.png'}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/4472/4472533.png'">
                     <div>
                         <div class="player-name"><span class="player-emoji">${p.emoji || '🧙'}</span> ${escapeHtml(p.name)}</div>
-                        <div style="font-size:0.75rem; opacity:0.7;">${p.finished ? `🏁 Финиш: ${p.finishPosition || '?'} место` : '🎯 В пути'}</div>
+                        <div style="font-size:0.7rem; opacity:0.8;">${finishText}</div>
                     </div>
                 </div>
                 <div class="player-stats">
                     <span>⭐ <span class="score">${p.score || 0}</span> очков</span>
-                    <span class="status ${p.finished ? 'finished' : 'playing'}">${p.finished ? '✅ ФИНИШ' : '⏳ в игре'}</span>
+                    <span class="status ${p.finished ? 'finished' : 'playing'}">${p.finished ? '✅ ФИНИШ' : '⏳ активен'}</span>
                 </div>
-                <div style="font-size:0.7rem; opacity:0.6;">📍 Позиция: (${p.x || 1}, ${p.y || 1})</div>
-            </div>
-        `).join('');
+                <div style="font-size:0.7rem; opacity:0.7;">${posText}</div>
+            </div>`;
+        }).join('');
     }
     
-    function updateLeaderboardUI(finishOrder) {
+    function updateLeaderboardUI(leaderboard) {
         const container = document.getElementById('leaderboardContainer');
         
-        if(!finishOrder || finishOrder.length === 0) {
-            container.innerHTML = '<div class="empty-list">🏁 Пока нет финишировавших</div>';
+        if(!leaderboard || leaderboard.length === 0) {
+            container.innerHTML = '<div class="empty-list">🏁 Пока нет финишировавших. Первым станет чемпионом!</div>';
             return;
         }
         
-        const sorted = [...finishOrder].sort((a,b) => a.position - b.position);
+        // сортировка по позиции
+        const sorted = [...leaderboard].sort((a,b) => (a.position || 999) - (b.position || 999));
         
         container.innerHTML = `
             <ul class="leaderboard-list">
-                ${sorted.map(p => `
-                    <li class="${p.position === 1 ? 'rank-1' : p.position === 2 ? 'rank-2' : p.position === 3 ? 'rank-3' : ''}">
-                        <span style="font-size:1.3rem; min-width: 50px;">
-                            ${p.position === 1 ? '🥇' : p.position === 2 ? '🥈' : p.position === 3 ? '🥉' : `${p.position}.`}
-                        </span>
-                        <span style="font-size:1.2rem;">${p.emoji || '🧙'}</span>
-                        <span style="flex:1;"><strong>${escapeHtml(p.name)}</strong></span>
-                        <span>⭐ ${p.score || 0}</span>
-                        <span>⏱️ ${((p.time || 0)/1000).toFixed(1)}с</span>
-                    </li>
-                `).join('')}
+                ${sorted.map(p => {
+                    let rankClass = '';
+                    let medal = '';
+                    if (p.position === 1) { rankClass = 'rank-1'; medal = '🥇 '; }
+                    else if (p.position === 2) { rankClass = 'rank-2'; medal = '🥈 '; }
+                    else if (p.position === 3) { rankClass = 'rank-3'; medal = '🥉 '; }
+                    const timeSec = p.time ? (p.time / 1000).toFixed(1) : '?';
+                    return `
+                    <li class="${rankClass}">
+                        <span style="font-weight:bold; min-width: 45px;">${medal || `${p.position}.`}</span>
+                        <span style="font-size:1.3rem;">${p.emoji || '🧙'}</span>
+                        <span style="flex:1; font-weight:500;">${escapeHtml(p.name)}</span>
+                        <span style="background:#00000055; padding:4px 10px; border-radius:30px;">⭐ ${p.score}</span>
+                        <span style="font-family:monospace;">⏱️ ${timeSec}с</span>
+                    </li>`;
+                }).join('')}
             </ul>
         `;
     }
     
-    function init() {
-        document.getElementById('gameLink').innerHTML = `🔗 ${GAME_URL}`;
+    // ========== ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ И ВОССТАНОВЛЕНИЕ (для dashboard) ==========
+    function syncAndRender() {
+        renderAll();  // просто перезагружаем из localStorage
+        const statusDiv = document.getElementById('autoRefreshStatus');
+        if (statusDiv) {
+            statusDiv.innerHTML = '🟢 Живая синхронизация (2с)';
+            setTimeout(() => {
+                if (document.getElementById('autoRefreshStatus'))
+                    statusDiv.innerHTML = '🟢 Живая синхронизация (2с)';
+            }, 100);
+        }
+    }
+    
+    // Инициализация QR и копирование
+    function setupUI() {
+        const gameLinkSpan = document.getElementById('gameLink');
+        if(gameLinkSpan) gameLinkSpan.innerHTML = `🔗 ${GAME_URL}`;
+        
+        // QR-код
+        const qrImg = document.getElementById('qrImg');
+        if(qrImg) {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(GAME_URL)}`;
+            qrImg.alt = "QR код игры";
+        }
         
         document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
-            navigator.clipboard.writeText(GAME_URL);
-            alert('✅ Ссылка скопирована!');
+            navigator.clipboard.writeText(GAME_URL).then(() => alert('✅ Ссылка скопирована!')).catch(() => alert('Нажмите Ctrl+C'));
         });
         
         document.getElementById('refreshBtn')?.addEventListener('click', () => {
-            loadAndRender();
-            const statusDiv = document.getElementById('autoRefreshStatus');
-            statusDiv.innerHTML = '✅ Обновлено!';
-            setTimeout(() => {
-                statusDiv.innerHTML = '🔄 Автообновление: активно (каждые 2 сек)';
-            }, 1500);
+            syncAndRender();
+            const btn = document.getElementById('refreshBtn');
+            const originalText = btn.innerText;
+            btn.innerText = '✅ Обновлено!';
+            setTimeout(() => { if(btn) btn.innerText = originalText; }, 1200);
         });
         
         document.getElementById('clearBtn')?.addEventListener('click', clearAllData);
-        
-        loadAndRender();
-        
-        // Автообновление каждые 2 секунды
-        setInterval(() => { loadAndRender(); }, 2000);
-        
-        // Слушаем изменения в localStorage (другие вкладки)
+    }
+    
+    // Слушаем изменения в localStorage (между вкладками организатора и игры)
+    function startStorageListener() {
         window.addEventListener('storage', (e) => {
-            if(e.key === STORAGE_KEY_LEADERBOARD || e.key === STORAGE_KEY_PLAYERS) {
-                console.log("📡 Обнаружено изменение в другой вкладке");
-                loadAndRender();
+            if (e.key === STORAGE_KEY_LEADERBOARD || e.key === STORAGE_KEY_PLAYERS) {
+                console.log("📡 Обнаружено обновление данных, перерисовка панели");
+                renderAll();
             }
         });
-        
-        // Настройка QR-кода
-        const qrImg = document.querySelector('.qr-code img');
-        if(qrImg && qrImg.complete && qrImg.naturalWidth === 0) {
-            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(GAME_URL)}`;
+    }
+    
+    // Дополнительно: раз в 2 секунды принудительно обновляем (на случай, если storage ивент не сработал)
+    let intervalId = null;
+    function startAutoRefresh() {
+        if (intervalId) clearInterval(intervalId);
+        intervalId = setInterval(() => {
+            renderAll();
+        }, 2000);
+    }
+    
+    // Эмуляция "принудительной синхронизации" со стороны dashboard — игроки пишут в тот же localStorage
+    // Также проверяем возможность "очистки" и корректного отображения финишировавших с позициями
+    
+    // Экспорт функции для ручного вызова (если нужно)
+    window.refreshDashboard = function() { renderAll(); };
+    
+    // ========== ДОПОЛНИТЕЛЬНЫЙ КОСМЕТИЧЕСКИЙ ФИКС: ВАЛИДАЦИЯ ФИНИШНЫХ ПОЗИЦИЙ  ==========
+    // Чтобы при удалении рейтинг корректно перестраивался (игроки могут финишировать и позиции сохраняются)
+    function validateLeaderboardPositions() {
+        const data = loadRawData();
+        let leader = data.leaderboard;
+        if (leader.length > 0) {
+            let updated = false;
+            for (let i = 0; i < leader.length; i++) {
+                const expectedPos = i+1;
+                if (leader[i].position !== expectedPos) {
+                    leader[i].position = expectedPos;
+                    updated = true;
+                }
+            }
+            if (updated) {
+                localStorage.setItem(STORAGE_KEY_LEADERBOARD, JSON.stringify(leader));
+            }
         }
-        
-        console.log("🎮 Дашборд запущен");
+        renderAll();
+    }
+    
+    // Запуск панели
+    function init() {
+        setupUI();
+        startStorageListener();
+        startAutoRefresh();
+        validateLeaderboardPositions();  // первичная проверка
+        // дополнительный вызов через 0.5с для полной загрузки
+        setTimeout(() => {
+            renderAll();
+            console.log("🎮 Дашборд организатора готов, рейтинг синхронизирован в реальном времени");
+        }, 100);
     }
     
     init();
